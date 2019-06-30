@@ -17,16 +17,38 @@ If you just want to use Joulescope, you can
 
 ## Quick start
 
+
+### Verify Python installation
+
+Verify that Python 3.6+ is installed on your computer:
+
+    python3 -V
+    
+On Windows, "python3" may not be created by default.  You can try "python -V"
+if your path is configured correctly, or you can provide the full path to your
+python executable.  If python is not already installed on your platform, 
+we recommend:
+
+*   Windows: download & install the [official Python release](https://www.python.org/downloads/).
+*   macOS: install [brew](https://brew.sh/), then "brew install python"
+*   Ubuntu 18.04 LTS: sudo apt install python3
+
+
+### Get this code
+
 Clone this repository to your computer:
 
-    git clone 
+    git clone https://github.com/jetperch/pyjoulescope_examples.git
     
 Install the dependencies:
 
     cd pyjoulescope_examples
     pip3 install -r requirements.txt
     
-And the run the scripts of your choice.  For example:
+    
+### Use this code:
+
+Open a command terminal and run the scripts of your choice.  For example:
 
     python3 bin\current_range_extract.py --help
 
