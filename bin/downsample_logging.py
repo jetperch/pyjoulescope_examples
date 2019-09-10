@@ -15,27 +15,27 @@
 # limitations under the License.
 
 r"""
-Capture downsampled data to a CSV file.
+Capture downsampled data to a comma-separate values (CSV) file.
 
 This script collects full-rate 2 MHz data from Joulescope, downsamples the data
 to 2 Hz, and then records the downsampled data to a CSV file.  The CSV files 
 are automatically named and stored under the Documents/joulescope directory. 
 On Windows, this will typically be:
 
-    C:\Users\{user_name}\Documents\joulescope\jslog_{YYYYMMDD_hhmmss}_{pid}.csv"
+    C:\Users\{user_name}\Documents\joulescope\jslog_{YYYYMMDD_hhmmss}_{pid}.csv
 
-The ".csv" file contains the capture data.  The CSV contains the columns:
+The ".csv" file contains the capture data with columns:
 
     time,current,voltage,power,charge,energy
 
-All values are in SI units:
+All values are in the International System of Units (SI):
 
     seconds,amperes,volts,watts,coulombs,joules
 
 The script also creates a ".txt" file which contains the state information
 for the logging session.
 If something happens to the test setup (like the host computer reboots), 
-you can use the "--resume" option to load the configured state for the most 
+use the "--resume" option to load the configured state for the most
 recent session and resume logging. 
 Any charge or energy consumed while the test setup was not logging will not 
 be recorded to the CSV file.
@@ -60,7 +60,7 @@ Lines are typically around 80 bytes each which means that this script generates:
     420 MB/month * 12 months/year = 5 GB/year
     
 To further reduce the logging rate, use the "--downsample" option.  For example,
-"--downsample 120" will log 1 sample per minute and reduce the overall
+"--downsample 120" will log one (1) sample per minute and reduce the overall
 file size by a factor of 120.
 
 Here is the example CSV output with the "simple" header and "--downsample 120" for
