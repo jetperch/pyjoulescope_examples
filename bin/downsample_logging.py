@@ -14,10 +14,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
+r"""
 Capture downsampled data to a CSV file.
 
-This implementation currently handles failure modes including:
+This script collects full-rate 2 MHz data from Joulescope, downsamples the data
+to 2 Hz, and then records the downsampled data to a CSV file.  The CSV files 
+are automatically named and stored under the Documents/joulescope directory. 
+On Windows, this will typically be:
+
+    C:\Users\{user_name}\Documents\joulescope\jslog_{YYYYMMDD_hhmmss}_{pid}.csv"
+
+The ".csv" file contains the capture data.  The CSV contains the columns:
+
+    time,current,voltage,power,charge,energy
+
+All values are in SI units:
+
+    seconds,amperes,volts,watts,coulombs,joules
+
+The script also creates a ".txt" file which contains the state information
+for the logging session.
+If something happens to the test setup (like the host computer reboots), 
+you can use the "--resume" option to load the configured state for the most 
+recent session and resume logging. 
+Any charge or energy consumed while the test setup was not logging will not 
+be recorded to the CSV file.
+
+This implementation handles failure modes including:
 
 * Joulescope reset
 * Joulescope unplug/replug
@@ -25,8 +48,31 @@ This implementation currently handles failure modes including:
 * Temporary loss of system power (using --resume option)
 * Host computer reset (using --resume option)
 
-"""
+For long-term logging, even 2 Hz downsampled data can still create too much data:
 
+    2 lines/second * (60 seconds/minute * 60 minutes/hour * 24 hours/day) = 
+    172800 lines / day
+    
+Lines are typically around 80 bytes each which means that this script generates:
+
+    172800 lines/day * 80 bytes/line = 12 MB/day
+    12 MB/day * 30.4 days/month = 420 MB/month
+    420 MB/month * 12 months/year = 5 GB/year
+    
+To further reduce the logging rate, use the "--downsample" option.  For example,
+"--downsample 120" will log 1 sample per minute and reduce the overall
+file size by a factor of 120.
+
+Here is the example CSV output with the "simple" header and "--downsample 120" for
+a 3.3V supply and 1000 Ω resistive load (10.9 mW):
+
+    time,current,voltage,power,charge,energy
+    60.0608842,0.00329505,3.2998,0.0108731,0.197703,0.652385
+    120.0572884,0.00329549,3.2997,0.0108743,0.395432,1.30484
+    180.0513701,0.00329558,3.2998,0.0108748,0.593167,1.95733
+    240.0502210,0.00329565,3.2998,0.0108751,0.790906,2.60984
+    300.0581367,0.00329583,3.2997,0.0108751,0.988656,3.26234
+"""
 
 import joulescope
 import signal
@@ -37,6 +83,7 @@ import os
 import datetime
 import logging
 import json
+import numpy as np
 
 
 try:
@@ -50,12 +97,20 @@ except:
 
 MAX_SAMPLES = 1000000000 / 5  # limit to 1 GB of RAM
 CSV_SEEK = 4096
+LAST_INITIALIZE = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
 
 def now_str():
     d = datetime.datetime.utcnow()
     s = d.strftime('%Y%m%d_%H%M%S')
     return s
+
+
+def downsample_type_check(string):
+    value = int(string)
+    if value < 1:
+        raise argparse.ArgumentTypeError('%r must be >= 1' % (string, ))
+    return value
 
 
 def get_parser():
@@ -72,6 +127,12 @@ def get_parser():
     p.add_argument('--resume', '-r',
                    action='store_true',
                    help='Resume the previous capture and append new data.')
+    p.add_argument('--downsample', '-d',
+                   default=1,
+                   type=downsample_type_check,
+                   help='The number of 2 Hz samples to condense into a single sample. '
+                        'For example, "--downsample 120" will write 1 sample '
+                        'per minute.')
     return p
 
 
@@ -84,8 +145,18 @@ def _find_files():
 
 
 class Logger:
+    """The downsampling logger instance.
 
-    def __init__(self, header=None, resume=None):
+    :param header: The CSV header format which is one of ['none', 'simple', 'comment']
+    :param downsample: The downsampling factor in samples.
+        1 performs no downsampling.
+        120 records one sample per minute.
+        None (default) is equivalent to 1.
+    :param resume: Use False or None to start a new logging session.
+        Provide True to resume the most recent logging session.
+    """
+
+    def __init__(self, header=None, downsample=None, resume=None):
         self._start_time_s = None
         self._f_csv = None
         self._f_event = None
@@ -101,6 +172,10 @@ class Logger:
 
         self._last = None  # (all values in csv)
         self._offset = [0.0, 0.0, 0.0]  # [time, charge, energy]
+        
+        self._downsample = 1 if downsample is None else int(downsample)
+        self._downsample_counter = 0
+        self._downsample_state = np.zeros(3, dtype=np.float)
 
     ST_IDLE = 0
     ST_ACTIVE = 1
@@ -147,9 +222,12 @@ class Logger:
                                 self._start_time_s = float(value)
                             elif name == 'start_str':
                                 self._time_str = value
+                            elif name == 'downsample':
+                                self._downsample = int(value)
                         if 'LOGGER : RUN' in line:
                             break
                 sz = os.path.getsize(csv_filename)
+                self._last = LAST_INITIALIZE
                 with open(csv_filename, 'rt') as f:
                     f.seek(max(0, sz - CSV_SEEK))
                     for line in f.readlines()[-1::-1]:
@@ -165,6 +243,7 @@ class Logger:
         self.on_event('LOGGER', 'OPEN')
         self.on_event('PARAM', f'start_time={self._start_time_s}')
         self.on_event('PARAM', f'start_str={self._time_str}')
+        self.on_event('PARAM', f'downsample={self._downsample}')
 
     def close(self):
         self.on_event('LOGGER', 'CLOSE')
@@ -181,9 +260,14 @@ class Logger:
         self.on_event('SIGNAL', 'SIGINT QUIT')
         self._quit = 'quit from SIGINT'
 
-    def on_stop(self):
-        self.on_event('SIGNAL', 'STOP')
-        self._quit = 'quit from device stop'
+    def on_stop(self, event=0, message=''):
+        # may be called from the Joulescope device thread
+        self.on_event('SIGNAL', f'STOP')
+        if event is not None and event > 0:
+            # unexpected stop, such as device removal
+            self._faults.append((event, message))
+        else:
+            self._quit = 'quit from device stop'
 
     def on_event(self, name, message):
         if self._f_event is not None:
@@ -195,13 +279,20 @@ class Logger:
             if self._f_csv is not None and self._header in ['full', 'comment']:
                 self._f_csv.write(f'#& {s}')
 
-    def on_event_cbk(self, event, message):
+    def on_event_cbk(self, event=0, message=''):
         # called from the Joulescope device thread
         self._faults.append((event, message))
 
     def on_statistics(self, data):
+        """Process the next Joulescope downsampled 2 Hz data.
+
+        :param data: The Joulescope statistics data.
+            See :meth:`joulescope.View.statistics_get` for details.
+        """
+        # called from the Joulescope device thread
         now = time.time()
         if self._last is None:
+            self._last = LAST_INITIALIZE
             columns = ['time', 'current', 'voltage', 'power', 'charge', 'energy']
             units = ['s',
                      data['signals']['current']['units'],
@@ -220,15 +311,22 @@ class Logger:
                 self._f_csv.write(f'#= units={units_csv}\n')
                 self._f_csv.write(f'#= start_time={self._start_time_s}\n')
                 self._f_csv.write(f'#= start_str={self._time_str}\n')
+            self._f_csv.flush()
         t = now - self._start_time_s + self._offset[0]
         i = data['signals']['current']['statistics']['μ']
         v = data['signals']['voltage']['statistics']['μ']
         p = data['signals']['power']['statistics']['μ']
         c = data['accumulators']['charge']['value'] + self._offset[1]
         e = data['accumulators']['energy']['value'] + self._offset[2]
-        self._last = (t, i, v, p, c, e)
-        self._f_csv.write('%.7f,%g,%.4f,%g,%g,%g\n' % self._last)
-        self._f_csv.flush()
+        self._downsample_state += [i, v, p]
+        self._downsample_counter += 1
+        if self._downsample_counter >= self._downsample:
+            s = self._downsample_state / self._downsample_counter
+            self._downsample_counter = 0
+            self._last = (t, *s, c, e)
+            self._downsample_state[:] = 0.0
+            self._f_csv.write('%.7f,%g,%.4f,%g,%g,%g\n' % self._last)
+            self._f_csv.flush()
 
     def _device_open(self, device):
         self.on_event('DEVICE', 'OPEN')
@@ -279,7 +377,7 @@ class Logger:
         try:
             while not self._quit:
                 self.device_scan_and_open()
-                time.sleep(0.1)
+                time.sleep(0.1)  # data is received on device's thread
                 while len(self._faults):  # handle faults on our thread
                     event, message = self._faults.pop(0)
                     self.on_event('EVENT', f'{event} {message}')
@@ -302,7 +400,7 @@ def run():
     parser = get_parser()
     args = parser.parse_args()
     print('Starting logging - press CTRL-C to stop')
-    with Logger(header=args.header, resume=args.resume) as logger:
+    with Logger(header=args.header, downsample=args.downsample, resume=args.resume) as logger:
         return logger.run()
 
 
