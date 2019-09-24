@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 # Copyright 2019 Jetperch LLC
 #
@@ -98,6 +99,7 @@ except:
 MAX_SAMPLES = 1000000000 / 5  # limit to 1 GB of RAM
 CSV_SEEK = 4096
 LAST_INITIALIZE = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+USER_NOTIFY_INTERVAL_S = 10.0
 
 
 def now_str():
@@ -165,6 +167,7 @@ class Logger:
         self.log = logging.getLogger(__name__)
         self._device = None
         self._device_str = None
+        self._user_notify_time_last = 0.0
         self._state = self.ST_IDLE
         self._faults = []
         self._resume = bool(resume)
@@ -348,7 +351,10 @@ class Logger:
         devices = joulescope.scan()
         devices_length = len(devices)
         if devices_length == 0:
-            pass
+            time_now = time.time()
+            if self._user_notify_time_last + USER_NOTIFY_INTERVAL_S <= time_now:
+                self._user_notify_time_last = time_now
+                self.log.warning('No Joulescope connected')
         elif devices_length == 1 and self._device_str is None:
             return self._device_open(devices[0])
         elif self._device_str is not None:
@@ -399,6 +405,10 @@ class Logger:
 def run():
     parser = get_parser()
     args = parser.parse_args()
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        level=logging.WARNING,
+        datefmt='%Y-%m-%dT%H:%M:%S')
     print('Starting logging - press CTRL-C to stop')
     with Logger(header=args.header, downsample=args.downsample, resume=args.resume) as logger:
         return logger.run()
