@@ -73,6 +73,12 @@ a 3.3V supply and 1000 Ω resistive load (10.9 mW):
     180.0513701,0.00329558,3.2998,0.0108748,0.593167,1.95733
     240.0502210,0.00329565,3.2998,0.0108751,0.790906,2.60984
     300.0581367,0.00329583,3.2997,0.0108751,0.988656,3.26234
+
+
+List of requested future features:
+* Specify save path (but can't break resume function!)
+* Add higher sample rate (see forum https://forum.joulescope.com/t/joulescope-data-logging/130/10)
+
 """
 
 import joulescope
