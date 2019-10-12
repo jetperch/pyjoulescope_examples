@@ -17,7 +17,7 @@
 
 """A very simple example that captures and prints the present Joulescope sample."""
 
-from joulescope.driver import scan_require_one
+from joulescope import scan_require_one
 
 
 def run():

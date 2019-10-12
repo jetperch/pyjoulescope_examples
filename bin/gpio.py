@@ -25,7 +25,7 @@ a 2 bit counter: 0, 1, 2, 3, 0, 1, 2, 3, 0, ...
 """
 
 
-from joulescope.driver import scan_require_one
+from joulescope import scan_require_one
 import time
 
 

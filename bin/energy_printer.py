@@ -17,7 +17,7 @@
 
 """Print the energy consumption recorded by Joulescope."""
 
-from joulescope.driver import scan_require_one
+from joulescope import scan_require_one
 from joulescope.units import three_sig_figs
 import signal
 import queue

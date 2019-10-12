@@ -24,7 +24,7 @@ current and voltage.  To configure your Joulescope for this test:
 * Connect GPIO GND to sensor IN-.
 """
 
-from joulescope.driver import scan_require_one
+from joulescope import scan_require_one
 import time
 import numpy as np
 import matplotlib.pyplot as plt
