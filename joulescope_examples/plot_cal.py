@@ -20,6 +20,8 @@
 import matplotlib.pyplot as plt
 import matplotlib.collections
 import numpy as np
+import os
+import psutil
 
 
 def plot_axis(axis, x, y, label=None):
@@ -57,9 +59,27 @@ def plot_iv(data, sampling_frequency, show=None):
         plt.close(f)
 
 
+def memory():
+    return psutil.Process(os.getpid()).memory_info().rss  # in bytes
+
+
 def print_stats(data, sampling_frequency):
+    mem = memory() / 2e6
+    print(f'Memory usage: {mem:.1f} MB')
+    is_finite = np.isfinite(data[:, 0])
     duration = len(data) / sampling_frequency
-    finite = np.count_nonzero(np.isfinite(data))
-    total = np.prod(data.shape)
+    finite = np.count_nonzero(is_finite)
+    total = len(data)
     nonfinite = total - finite
     print(f'found {nonfinite} NaN out of {total} samples ({duration:.3f} seconds)')
+    is_finite[0], is_finite[-1] = True, True  # force counting at start and end
+    nan_edges = np.nonzero(np.diff(is_finite))[0]
+    nan_runs = len(nan_edges) // 2
+    if nan_runs:
+        print(f'nan edges: {nan_edges.reshape((-1, 2))}')
+        nan_edge_lengths = nan_edges[1::2] - nan_edges[0::2]
+        run_mean = np.mean(nan_edge_lengths)
+        run_std = np.std(nan_edge_lengths)
+        run_min = np.min(nan_edge_lengths)
+        run_max = np.max(nan_edge_lengths)
+        print(f'found {nan_runs} NaN runs: {run_mean} mean, {run_std} std, {run_min} min, {run_max} max')
