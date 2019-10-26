@@ -22,9 +22,9 @@ If you just want to use Joulescope, you can
 
 Verify that Python 3.6+ is installed on your computer:
 
-    python3 -V
+    python3 -V -V
     
-On Windows, "python3" may not be created by default.  You can try "python -V"
+On Windows, "python3" may not be created by default.  You can try "python -V -V"
 if your path is configured correctly, or you can provide the full path to your
 python executable.  If python is not already installed on your platform, 
 we recommend:
@@ -39,7 +39,11 @@ we recommend:
 Clone this repository to your computer:
 
     git clone https://github.com/jetperch/pyjoulescope_examples.git
-    
+
+Alternatively, you can just 
+[download the latest](https://github.com/jetperch/pyjoulescope_examples/archive/master.zip) 
+version directly from GitHub, and then extract the ZIP file.
+
 Install the dependencies:
 
     cd pyjoulescope_examples
@@ -48,9 +52,18 @@ Install the dependencies:
     
 ### Use this code:
 
-Open a command terminal and run the scripts of your choice.  For example:
+Open a command terminal and run the scripts of your choice.  See the bin
+directory for the list of scripts.  For example:
 
-    python3 bin\current_range_extract.py --help
+    python3 bin\capture_simple.py
+
+For scripts that take arguments, specify a "--help" argument for details on
+the available arguments:
+
+    python3 bin\downsample_logging.py --help
+
+Many of the scripts also have instructions inside the script.  Use your 
+favorite text editor to open the script.
 
 
 ## License
