@@ -23,7 +23,7 @@ to 2 Hz, and then records the downsampled data to a CSV file.  The CSV files
 are automatically named and stored under the Documents/joulescope directory. 
 On Windows, this will typically be:
 
-    C:\Users\{user_name}\Documents\joulescope\jslog_{YYYYMMDD_hhmmss}_{pid}.csv
+    C:\Users\{user_name}\Documents\joulescope\jslog_{YYYYMMDD_hhmmss}_{pid}_{serial_number}.csv
 
 The ".csv" file contains the capture data with columns:
 
@@ -90,6 +90,7 @@ import os
 import datetime
 import logging
 import json
+import weakref
 import numpy as np
 
 
@@ -119,6 +120,15 @@ def downsample_type_check(string):
     if value < 1:
         raise argparse.ArgumentTypeError('%r must be >= 1' % (string, ))
     return value
+
+
+def joulescope_count_to_str(count):
+    if count == 0:
+        return 'no Joulescopes'
+    elif count == 1:
+        return 'one Joulescope'
+    else:
+        return f'{count} Joulescopes'
 
 
 def get_parser():
@@ -166,28 +176,17 @@ class Logger:
 
     def __init__(self, header=None, downsample=None, resume=None):
         self._start_time_s = None
-        self._f_csv = None
         self._f_event = None
         self._time_str = None
         self._quit = None
+        self._downsample = 1 if downsample is None else int(downsample)
         self.log = logging.getLogger(__name__)
-        self._device = None
-        self._device_str = None
+        self._devices = []
         self._user_notify_time_last = 0.0
-        self._state = self.ST_IDLE
         self._faults = []
         self._resume = bool(resume)
         self._header = header
-
-        self._last = None  # (all values in csv)
-        self._offset = [0.0, 0.0, 0.0]  # [time, charge, energy]
-        
-        self._downsample = 1 if downsample is None else int(downsample)
-        self._downsample_counter = 0
-        self._downsample_state = np.zeros(3, dtype=np.float)
-
-    ST_IDLE = 0
-    ST_ACTIVE = 1
+        self._base_filename = None
 
     def __str__(self):
         return f'Logger("{self._time_str}")'
@@ -202,66 +201,73 @@ class Logger:
         except:
             self.log.exception('While closing during __exit__')
 
+    def _devices_create(self, device_strs):
+        for device_str in device_strs:
+            self._devices.append(LoggerDevice(self, device_str))
+
+    def _on_resume(self):
+        flist = _find_files()
+        if not len(flist):
+            print('resume specified, but no existing logs found')
+            return
+        fname = flist[-1]
+        base_filename, _ = os.path.splitext(fname)
+        self._base_filename = os.path.join(BASE_PATH, base_filename)
+        event_filename = self._base_filename + '.txt'
+        print('Resuming ' + event_filename)
+        with open(event_filename, 'rt') as f:
+            for line in f:
+                line = line.strip()
+                if ' PARAM : ' in line:
+                    name, value = line.split(' PARAM : ')[-1].split('=')
+                    if name == 'start_time':
+                        self._start_time_s = float(value)
+                    elif name == 'start_str':
+                        self._time_str = value
+                    elif name == 'downsample':
+                        self._downsample = int(value)
+                if 'DEVICES ' in line:
+                    device_strs = line.split(' DEVICES : ')[-1].split(',')
+                    self._devices_create(device_strs)
+                if 'LOGGER : RUN' in line:
+                    break
+        self._f_event = open(event_filename, 'at')
+        self.on_event('LOGGER', 'RESUME')
+
     def open(self):
         self._quit = None
-        self._last = None
         os.makedirs(BASE_PATH, exist_ok=True)
 
-        self._start_time_s = time.time()
-        self._time_str = now_str()
-        base_filename = 'jslog_%s_%s' % (self._time_str, os.getpid(),)
-        event_filename = os.path.join(BASE_PATH, base_filename + '.txt')
-        csv_filename = os.path.join(BASE_PATH, base_filename + '.csv')
-
         if self._resume:
-            flist = _find_files()
-            if not len(flist):
-                print('resume specified, but no existing logs found')
-            else:
-                fname = flist[-1]
-                base_filename, _ = os.path.splitext(fname)
-                event_filename = os.path.join(BASE_PATH, base_filename + '.txt')
-                csv_filename = os.path.join(BASE_PATH, base_filename + '.csv')
-                with open(event_filename, 'rt') as f:
-                    for line in f:
-                        line = line.strip()
-                        if ' PARAM : ' in line:
-                            name, value = line.split(' PARAM : ')[-1].split('=')
-                            if name == 'start_time':
-                                self._start_time_s = float(value)
-                            elif name == 'start_str':
-                                self._time_str = value
-                            elif name == 'downsample':
-                                self._downsample = int(value)
-                        if 'LOGGER : RUN' in line:
-                            break
-                sz = os.path.getsize(csv_filename)
-                self._last = LAST_INITIALIZE
-                with open(csv_filename, 'rt') as f:
-                    f.seek(max(0, sz - CSV_SEEK))
-                    for line in f.readlines()[-1::-1]:
-                        if line.startswith('#'):
-                            continue
-                        self._last = tuple([float(x) for x in line.strip().split(',')])
-                        self._offset = [0.0, self._last[-2], self._last[-1]]
-                        break
+            self._on_resume()
+        else:
+            self._start_time_s = time.time()
+            self._time_str = now_str()
+            base_filename = 'jslog_%s_%s' % (self._time_str, os.getpid())
+            self._base_filename = os.path.join(BASE_PATH, base_filename)
+            event_filename = self._base_filename + '.txt'
+            self._f_event = open(event_filename, 'at')
+            self.on_event('LOGGER', 'OPEN')
+            self.on_event('PARAM', f'start_time={self._start_time_s}')
+            self.on_event('PARAM', f'start_str={self._time_str}')
+            self.on_event('PARAM', f'downsample={self._downsample}')
 
-        print(f'Filename: {csv_filename}')
-        self._f_csv = open(csv_filename, 'at')
-        self._f_event = open(event_filename, 'at')
-        self.on_event('LOGGER', 'OPEN')
-        self.on_event('PARAM', f'start_time={self._start_time_s}')
-        self.on_event('PARAM', f'start_str={self._time_str}')
-        self.on_event('PARAM', f'downsample={self._downsample}')
+            devices = joulescope.scan()
+            device_strs = [str(device) for device in devices]
+            if not len(device_strs):
+                raise RuntimeError('No Joulescopes found')
+            self.log.info('Found %d Joulescopes', len(device_strs))
+            self.on_event('DEVICES', ','.join(device_strs))
+            print('Found ' + joulescope_count_to_str(len(device_strs)))
+            self._devices_create(device_strs)
 
     def close(self):
         self.on_event('LOGGER', 'CLOSE')
-        self.device_close()
-        if self._f_csv is not None:
-            self._f_csv.close()
-            self._f_csv = None
+        while len(self._devices):
+            self._devices.pop().close()
 
         if self._f_event is not None:
+            self.on_event('LOGGER', 'DONE')
             self._f_event.close()
             self._f_event = None
 
@@ -269,14 +275,12 @@ class Logger:
         self.on_event('SIGNAL', 'SIGINT QUIT')
         self._quit = 'quit from SIGINT'
 
-    def on_stop(self, event=0, message=''):
-        # may be called from the Joulescope device thread
-        self.on_event('SIGNAL', f'STOP')
+    def on_stop(self, device, event=0, message=''):
+        # may be called from the Joulescope device thread, keep short!
+        self.on_event('SIGNAL', f'STOP ' + str(device))
         if event is not None and event > 0:
-            # unexpected stop, such as device removal
             self._faults.append((event, message))
-        else:
-            self._quit = 'quit from device stop'
+            self._faults.append(('DEVICE_CLOSE', device))
 
     def on_event(self, name, message):
         if self._f_event is not None:
@@ -285,12 +289,142 @@ class Logger:
             s = f'{s} {name} : {message}\n'
             self._f_event.write(s)
             self._f_event.flush()
-            if self._f_csv is not None and self._header in ['full', 'comment']:
-                self._f_csv.write(f'#& {s}')
+            if self._header in ['full', 'comment']:
+                for device in self._devices:
+                    device.write(f'#& {s}')
+
+    def on_event_cbk(self, device, event=0, message=''):
+        # called from the Joulescope device thread, keep short!
+        self._faults.append((event, message))
+        self._faults.append(('DEVICE_CLOSE', device))
+
+    def _open_devices(self, do_notify=True):
+        closed_devices = [d for d in self._devices if not d.is_open]
+        closed_count = len(closed_devices)
+        if closed_count:
+            if do_notify:
+                time_now = time.time()
+                if (self._user_notify_time_last + USER_NOTIFY_INTERVAL_S) <= time_now:
+                    self.log.warning('Missing ' + joulescope_count_to_str(closed_count))
+                    self._user_notify_time_last = time_now
+
+            all_devices = joulescope.scan()
+            for closed_device in closed_devices:
+                for all_device in all_devices:
+                    if str(closed_device) == str(all_device):
+                        closed_device.open(all_device)
+                        break
+        else:
+            self._user_notify_time_last = 0.0
+        return closed_count
+
+    def run(self):
+        self.on_event('LOGGER', 'RUN')
+        signal.signal(signal.SIGINT, self.on_quit)
+        try:
+            self._open_devices(do_notify=False)
+            while not self._quit:
+                closed_count = self._open_devices()
+                if closed_count:
+                    time.sleep(0.25)
+
+                time.sleep(0.1)  # data is received on device's thread
+                while len(self._faults):  # handle faults on our thread
+                    event, message = self._faults.pop(0)
+                    self.on_event('EVENT', f'{event} {message}')
+                    if event == 'DEVICE_CLOSE':
+                        message.close()
+            for device in self._devices:
+                device.stop()
+        except Exception as ex:
+            self.log.exception('while capturing data')
+            self.on_event('FAIL', str(ex))
+            return 1
+
+
+class LoggerDevice:
+
+    def __init__(self, parent, device_str):
+        self.is_open = False
+        self._parent = weakref.ref(parent)
+        self._device_str = device_str
+        self._device = None
+        self._f_csv = None
+
+        self._last = None  # (all values in csv)
+        self._offset = [0.0, 0.0, 0.0]  # [time, charge, energy]
+        self._downsample_counter = 0
+        self._downsample_state = np.zeros(3, dtype=np.float)
+
+    def __str__(self):
+        return self._device_str
+
+    @property
+    def csv_filename(self):
+        sn = self._device_str.split(':')[-1]
+        return self._parent()._base_filename + '_' + sn + '.csv'
+
+    def _resume(self):
+        fname = self.csv_filename
+        if not os.path.isfile(fname):
+            return
+        sz = os.path.getsize(fname)
+        self._last = LAST_INITIALIZE
+        with open(fname, 'rt') as f:
+            f.seek(max(0, sz - CSV_SEEK))
+            for line in f.readlines()[-1::-1]:
+                if line.startswith('#'):
+                    continue
+                self._last = tuple([float(x) for x in line.strip().split(',')])
+                self._offset = [0.0, self._last[-2], self._last[-1]]
+                return
+
+    def open(self, device):
+        if self.is_open:
+            return
+        if str(device) != str(self):
+            raise ValueError('Mismatch device')
+        parent = self._parent()
+        parent.on_event('DEVICE', 'OPEN ' + self._device_str)
+        self._resume()
+        self._f_csv = open(self.csv_filename, 'at+')
+        device.open(event_callback_fn=self.on_event_cbk)
+        info = device.info()
+        self._parent().on_event('DEVICE_INFO', json.dumps(info))
+        device.statistics_callback = self.on_statistics
+        device.parameter_set('source', 'raw')
+        device.parameter_set('i_range', 'auto')
+        device.start(stop_fn=self.on_stop)
+        self._device = device
+        self.is_open = True
+        return self
+
+    def stop(self):
+        try:
+            if self._device is not None:
+                self._device.stop()
+        except Exception:
+            pass
 
     def on_event_cbk(self, event=0, message=''):
-        # called from the Joulescope device thread
-        self._faults.append((event, message))
+        self._parent().on_event_cbk(self, event, message)
+
+    def on_stop(self, event=0, message=''):
+        self._parent().on_stop(self, event, message)
+
+    def close(self):
+        self._last = None
+        self.is_open = False
+        if self._device is not None:
+            self._device.close()
+            self._device = None
+        if self._f_csv is not None:
+            self._f_csv.close()
+            self._f_csv = None
+
+    def write(self, text):
+        if self._f_csv is not None:
+            self._f_csv.write(text)
 
     def on_statistics(self, data):
         """Process the next Joulescope downsampled 2 Hz data.
@@ -300,6 +434,7 @@ class Logger:
         """
         # called from the Joulescope device thread
         now = time.time()
+        parent = self._parent()
         if self._last is None:
             self._last = LAST_INITIALIZE
             columns = ['time', 'current', 'voltage', 'power', 'charge', 'energy']
@@ -311,17 +446,17 @@ class Logger:
                      data['accumulators']['energy']['units']]
             columns_csv = ','.join(columns)
             units_csv = ','.join(units)
-            self.on_event('PARAM', f'columns={columns_csv}')
-            self.on_event('PARAM', f'units={units_csv}')
-            if self._header in ['simple']:
+            parent.on_event('PARAM', f'columns={columns_csv}')
+            parent.on_event('PARAM', f'units={units_csv}')
+            if parent._header in ['simple']:
                 self._f_csv.write(f'{columns_csv}\n')
-            elif self._header in ['comment', 'full']:
+            elif parent._header in ['comment', 'full']:
                 self._f_csv.write(f'#= header={columns_csv}\n')
                 self._f_csv.write(f'#= units={units_csv}\n')
-                self._f_csv.write(f'#= start_time={self._start_time_s}\n')
-                self._f_csv.write(f'#= start_str={self._time_str}\n')
+                self._f_csv.write(f'#= start_time={parent._start_time_s}\n')
+                self._f_csv.write(f'#= start_str={parent._time_str}\n')
             self._f_csv.flush()
-        t = now - self._start_time_s + self._offset[0]
+        t = now - parent._start_time_s + self._offset[0]
         i = data['signals']['current']['statistics']['μ']
         v = data['signals']['voltage']['statistics']['μ']
         p = data['signals']['power']['statistics']['μ']
@@ -329,83 +464,13 @@ class Logger:
         e = data['accumulators']['energy']['value'] + self._offset[2]
         self._downsample_state += [i, v, p]
         self._downsample_counter += 1
-        if self._downsample_counter >= self._downsample:
+        if self._downsample_counter >= parent._downsample:
             s = self._downsample_state / self._downsample_counter
             self._downsample_counter = 0
             self._last = (t, *s, c, e)
             self._downsample_state[:] = 0.0
             self._f_csv.write('%.7f,%g,%.4f,%g,%g,%g\n' % self._last)
             self._f_csv.flush()
-
-    def _device_open(self, device):
-        self.on_event('DEVICE', 'OPEN')
-        device.open(event_callback_fn=self.on_event_cbk)
-        info = device.info()
-        self.on_event('DEVICE_INFO', json.dumps(info))
-        device.statistics_callback = self.on_statistics
-        device.parameter_set('source', 'raw')
-        device.parameter_set('i_range', 'auto')
-        device.start(stop_fn=self.on_stop)
-        self._device = device
-        self._device_str = str(self._device)
-        self._state = self.ST_ACTIVE
-        return self._device
-
-    def device_scan_and_open(self):
-        if self._state != self.ST_IDLE:
-            return self._device
-        devices = joulescope.scan()
-        devices_length = len(devices)
-        if devices_length == 0:
-            time_now = time.time()
-            if self._user_notify_time_last + USER_NOTIFY_INTERVAL_S <= time_now:
-                self._user_notify_time_last = time_now
-                self.log.warning('No Joulescope connected')
-        elif devices_length == 1 and self._device_str is None:
-            return self._device_open(devices[0])
-        elif self._device_str is not None:
-            for device in devices:
-                if str(device) == self._device_str:
-                    return self._device_open(device)
-        else:
-            self.on_event('SCAN', 'select first device')
-            return self._device_open(devices[0])
-        return None
-
-    def device_close(self):
-        self._state = self.ST_IDLE
-        if self._device is None:
-            return
-        self.on_event('DEVICE', 'CLOSE')
-        device, self._device = self._device, None
-        try:
-            device.close()
-        except:
-            self.log.exception('during device.close()')
-
-    def run(self):
-        self.on_event('LOGGER', 'RUN')
-        signal.signal(signal.SIGINT, self.on_quit)
-        try:
-            while not self._quit:
-                self.device_scan_and_open()
-                time.sleep(0.1)  # data is received on device's thread
-                while len(self._faults):  # handle faults on our thread
-                    event, message = self._faults.pop(0)
-                    self.on_event('EVENT', f'{event} {message}')
-                    if event:
-                        self.device_close()
-            if self._device:
-                try:
-                    self._device.stop()
-                except:
-                    self.log.exception('during device.stop()')
-        except Exception as ex:
-            self.log.exception('while capturing data')
-            self.on_event('FAIL', str(ex))
-            return 1
-        self.device_close()
-        self.on_event('LOGGER', 'DONE')
 
 
 def run():
