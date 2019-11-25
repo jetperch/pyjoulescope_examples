@@ -394,12 +394,6 @@ class LoggerDevice:
                 self._offset = [0.0, self._last[-2], self._last[-1]]
                 return
 
-    def _compute_reduction(self, frequency):
-        if frequency < 50:
-            return [200, 100, 100 // frequency]  # three reduction levels
-        else:
-            return [200, (200 * 50) // frequency]  # two reduction levels
-
     def open(self, device):
         if self.is_open:
             return
@@ -409,7 +403,7 @@ class LoggerDevice:
         parent.on_event('DEVICE', 'OPEN ' + self._device_str)
         self._resume()
         self._f_csv = open(self.csv_filename, 'at+')
-        device.reductions = self._compute_reduction(self._parent()._frequency)
+        device.reduction_frequency = self._parent()._frequency
         device.open(event_callback_fn=self.on_event_cbk)
         info = device.info()
         self._parent().on_event('DEVICE_INFO', json.dumps(info))
