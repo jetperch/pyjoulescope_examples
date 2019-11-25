@@ -107,6 +107,7 @@ MAX_SAMPLES = 1000000000 / 5  # limit to 1 GB of RAM
 CSV_SEEK = 4096
 LAST_INITIALIZE = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 USER_NOTIFY_INTERVAL_S = 10.0
+FREQUENCIES = 1, 2, 4, 10, 20, 50, 100
 
 
 def now_str():
@@ -148,9 +149,16 @@ def get_parser():
     p.add_argument('--downsample', '-d',
                    default=1,
                    type=downsample_type_check,
-                   help='The number of 2 Hz samples to condense into a single sample. '
+                   help='The number of frequency samples (2 Hz by default) to '
+                        'condense into a single sample. '
                         'For example, "--downsample 120" will write 1 sample '
                         'per minute.')
+    p.add_argument('--frequency', '-f',
+                   default=2,
+                   choices=FREQUENCIES,
+                   type=int,
+                   help='The base collection frequency in Hz.  Defaults to 2.')
+
     return p
 
 
@@ -170,16 +178,18 @@ class Logger:
         1 performs no downsampling.
         120 records one sample per minute.
         None (default) is equivalent to 1.
+    :param frequency: The base frequency, which defaults to 2 Hz.
     :param resume: Use False or None to start a new logging session.
         Provide True to resume the most recent logging session.
     """
 
-    def __init__(self, header=None, downsample=None, resume=None):
+    def __init__(self, header=None, downsample=None, frequency=None, resume=None):
         self._start_time_s = None
         self._f_event = None
         self._time_str = None
         self._quit = None
         self._downsample = 1 if downsample is None else int(downsample)
+        self._frequency = 2 if frequency is None else int(frequency)
         self.log = logging.getLogger(__name__)
         self._devices = []
         self._user_notify_time_last = 0.0
@@ -187,6 +197,8 @@ class Logger:
         self._resume = bool(resume)
         self._header = header
         self._base_filename = None
+        if self._frequency not in FREQUENCIES:
+            raise ValueError(f'Unsupported frequency {self._frequency}')
 
     def __str__(self):
         return f'Logger("{self._time_str}")'
@@ -226,6 +238,8 @@ class Logger:
                         self._time_str = value
                     elif name == 'downsample':
                         self._downsample = int(value)
+                    elif name == 'frequency':
+                        self._frequency = int(value)
                 if 'DEVICES ' in line:
                     device_strs = line.split(' DEVICES : ')[-1].split(',')
                     self._devices_create(device_strs)
@@ -251,6 +265,7 @@ class Logger:
             self.on_event('PARAM', f'start_time={self._start_time_s}')
             self.on_event('PARAM', f'start_str={self._time_str}')
             self.on_event('PARAM', f'downsample={self._downsample}')
+            self.on_event('PARAM', f'frequency={self._frequency}')
 
             devices = joulescope.scan()
             device_strs = [str(device) for device in devices]
@@ -379,6 +394,12 @@ class LoggerDevice:
                 self._offset = [0.0, self._last[-2], self._last[-1]]
                 return
 
+    def _compute_reduction(self, frequency):
+        if frequency < 50:
+            return [200, 100, 100 // frequency]  # three reduction levels
+        else:
+            return [200, (200 * 50) // frequency]  # two reduction levels
+
     def open(self, device):
         if self.is_open:
             return
@@ -388,6 +409,7 @@ class LoggerDevice:
         parent.on_event('DEVICE', 'OPEN ' + self._device_str)
         self._resume()
         self._f_csv = open(self.csv_filename, 'at+')
+        device.reductions = self._compute_reduction(self._parent()._frequency)
         device.open(event_callback_fn=self.on_event_cbk)
         info = device.info()
         self._parent().on_event('DEVICE_INFO', json.dumps(info))
@@ -481,7 +503,8 @@ def run():
         level=logging.WARNING,
         datefmt='%Y-%m-%dT%H:%M:%S')
     print('Starting logging - press CTRL-C to stop')
-    with Logger(header=args.header, downsample=args.downsample, resume=args.resume) as logger:
+    with Logger(header=args.header, downsample=args.downsample,
+                frequency=args.frequency, resume=args.resume) as logger:
         return logger.run()
 
 
