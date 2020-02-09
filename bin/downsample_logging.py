@@ -108,6 +108,7 @@ CSV_SEEK = 4096
 LAST_INITIALIZE = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 USER_NOTIFY_INTERVAL_S = 10.0
 FREQUENCIES = 1, 2, 4, 10, 20, 50, 100
+FLOAT_MAX = np.finfo(np.float).max
 
 
 def now_str():
@@ -369,7 +370,17 @@ class LoggerDevice:
         self._last = None  # (all values in csv)
         self._offset = [0.0, 0.0, 0.0]  # [time, charge, energy]
         self._downsample_counter = 0
-        self._downsample_state = np.zeros(3, dtype=np.float)
+        self._downsample_state = {
+            'μ': np.zeros(3, dtype=np.float),
+            'min': np.zeros(1, dtype=np.float),
+            'max': np.zeros(1, dtype=np.float),
+        }
+        self._downsample_state_reset()
+
+    def _downsample_state_reset(self):
+        self._downsample_state['μ'][:] = 0.0
+        self._downsample_state['min'][:] = FLOAT_MAX
+        self._downsample_state['max'][:] = -FLOAT_MAX
 
     def __str__(self):
         return self._device_str
@@ -453,13 +464,17 @@ class LoggerDevice:
         parent = self._parent()
         if self._last is None:
             self._last = LAST_INITIALIZE
-            columns = ['time', 'current', 'voltage', 'power', 'charge', 'energy']
+            columns = ['time', 'current', 'voltage', 'power', 'charge', 'energy',
+                       'current_min', 'current_max']
             units = ['s',
                      data['signals']['current']['units'],
                      data['signals']['voltage']['units'],
                      data['signals']['power']['units'],
                      data['accumulators']['charge']['units'],
-                     data['accumulators']['energy']['units']]
+                     data['accumulators']['energy']['units'],
+                     data['signals']['current']['units'],
+                     data['signals']['current']['units'],
+                     ]
             columns_csv = ','.join(columns)
             units_csv = ','.join(units)
             parent.on_event('PARAM', f'columns={columns_csv}')
@@ -478,14 +493,18 @@ class LoggerDevice:
         p = data['signals']['power']['statistics']['μ']
         c = data['accumulators']['charge']['value'] + self._offset[1]
         e = data['accumulators']['energy']['value'] + self._offset[2]
-        self._downsample_state += [i, v, p]
+        i_min = data['signals']['current']['statistics']['min']
+        i_max = data['signals']['current']['statistics']['max']
+        self._downsample_state['μ'] += [i, v, p]
+        self._downsample_state['min'] = np.minimum([i_min], self._downsample_state['min'])
+        self._downsample_state['max'] = np.maximum([i_max], self._downsample_state['max'])
         self._downsample_counter += 1
         if self._downsample_counter >= parent._downsample:
-            s = self._downsample_state / self._downsample_counter
+            s = self._downsample_state['μ'] / self._downsample_counter
             self._downsample_counter = 0
-            self._last = (t, *s, c, e)
-            self._downsample_state[:] = 0.0
-            self._f_csv.write('%.7f,%g,%.4f,%g,%g,%g\n' % self._last)
+            self._last = (t, *s, c, e, *self._downsample_state['min'], *self._downsample_state['max'])
+            self._downsample_state_reset()
+            self._f_csv.write('%.7f,%g,%g,%g,%.4f,%g,%g,%g\n' % self._last)
             self._f_csv.flush()
 
 
