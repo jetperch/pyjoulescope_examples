@@ -80,7 +80,7 @@ def run():
 
     args = get_parser().parse_args()
     device = scan_require_one(config='auto')
-    device.stream_buffer_duration = 2.0  # could be smaller
+    device.parameter_set('buffer_duration', 2)  # could be smaller
     stream_process = StreamProcess(args.duration, device.sampling_frequency)
 
     signal.signal(signal.SIGINT, on_stop)

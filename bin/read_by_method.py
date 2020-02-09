@@ -65,7 +65,7 @@ def run():
     device = scan_require_one(config='auto')
     if buffer_duration is not None:
         # adjust the stream buffer size to accommodate this capture
-        device.stream_buffer_duration = buffer_duration * 1.01
+        device.parameter_set('buffer_duration', round(buffer_duration * 1.01 + 0.501))
 
     # Perform the data capture
     with device:
