@@ -467,13 +467,13 @@ class LoggerDevice:
             columns = ['time', 'current', 'voltage', 'power', 'charge', 'energy',
                        'current_min', 'current_max']
             units = ['s',
-                     data['signals']['current']['units'],
-                     data['signals']['voltage']['units'],
-                     data['signals']['power']['units'],
+                     data['signals']['current']['μ']['units'],
+                     data['signals']['voltage']['μ']['units'],
+                     data['signals']['power']['μ']['units'],
                      data['accumulators']['charge']['units'],
                      data['accumulators']['energy']['units'],
-                     data['signals']['current']['units'],
-                     data['signals']['current']['units'],
+                     data['signals']['current']['μ']['units'],
+                     data['signals']['current']['μ']['units'],
                      ]
             columns_csv = ','.join(columns)
             units_csv = ','.join(units)
@@ -488,13 +488,13 @@ class LoggerDevice:
                 self._f_csv.write(f'#= start_str={parent._time_str}\n')
             self._f_csv.flush()
         t = now - parent._start_time_s + self._offset[0]
-        i = data['signals']['current']['statistics']['μ']
-        v = data['signals']['voltage']['statistics']['μ']
-        p = data['signals']['power']['statistics']['μ']
+        i = data['signals']['current']['μ']['value']
+        v = data['signals']['voltage']['μ']['value']
+        p = data['signals']['power']['μ']['value']
         c = data['accumulators']['charge']['value'] + self._offset[1]
         e = data['accumulators']['energy']['value'] + self._offset[2]
-        i_min = data['signals']['current']['statistics']['min']
-        i_max = data['signals']['current']['statistics']['max']
+        i_min = data['signals']['current']['min']['value']
+        i_max = data['signals']['current']['max']['value']
         self._downsample_state['μ'] += [i, v, p]
         self._downsample_state['min'] = np.minimum([i_min], self._downsample_state['min'])
         self._downsample_state['max'] = np.maximum([i_max], self._downsample_state['max'])
