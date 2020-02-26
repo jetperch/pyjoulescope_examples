@@ -57,8 +57,8 @@ def run():
             time.sleep(0.01)
 
         # analyze the collected voltage_lsb data for edges
-        data = js.stream_buffer.data_get(*js.stream_buffer.sample_id_range)
-        out0 = data[:, 5, 0]  # voltage_lsb is index 5
+        data = js.stream_buffer.samples_get(*js.stream_buffer.sample_id_range, fields=['voltage_lsb'])
+        out0 = data[0]
         edges_idx = np.nonzero(np.diff(out0))[0]
         edge_count = len(edges_idx)
         print(f'Found {edge_count} out0 edges')
