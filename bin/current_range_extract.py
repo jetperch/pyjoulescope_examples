@@ -71,15 +71,8 @@ def load_current_range(filename):
         if r_stop - r_start > MAX_SAMPLES:
             print('file too big')
             return 1
-            
-        # Get raw sample data and reconstruct current range
-        # Use in-place memory operations to prevent unnecessary copies
-        data = r.raw()
-        np.bitwise_and(data[:, 0], 3, out=data[:, 0])
-        np.bitwise_and(data[:, 1], 1, out=data[:, 1])
-        np.left_shift(data[:, 1], 2, out=data[:, 1])
-        np.bitwise_or(data[:, 0], data[:, 1], out=data[:, 0])
-        return data[:, 0].astype(np.uint8)
+        d = r.samples_get(fields=['current_range'])
+        return d['signals']['current_range']['value']
     finally:
         r.close()
 
