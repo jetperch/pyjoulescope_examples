@@ -57,8 +57,9 @@ def run():
             time.sleep(0.01)
 
         # analyze the collected voltage_lsb data for edges
-        data = js.stream_buffer.samples_get(*js.stream_buffer.sample_id_range, fields=['voltage_lsb'])
-        out0 = data[0]
+        data = js.stream_buffer.samples_get(*js.stream_buffer.sample_id_range, fields=['current', 'voltage_lsb'])
+        current = data['signals']['current']['value']
+        out0 = data['signals']['voltage_lsb']['value']
         edges_idx = np.nonzero(np.diff(out0))[0]
         edge_count = len(edges_idx)
         print(f'Found {edge_count} out0 edges')
@@ -80,10 +81,10 @@ def run():
 
         for edge_idx in range(edge_count):
             idx = edges_idx[edge_idx]
-            if idx < x_lead or idx > len(data) - x_lag:
+            if idx < x_lead or idx > len(out0) - x_lag:
                 continue
-            ax_gpi.plot(x, data[idx - x_lead:idx + x_lag, 5, 0])
-            ax_i.plot(x, data[idx - x_lead:idx + x_lag, 0, 0])
+            ax_gpi.plot(x, out0[idx - x_lead:idx + x_lag])
+            ax_i.plot(x, current[idx - x_lead:idx + x_lag])
 
         plt.show()
         plt.close(f)

@@ -64,9 +64,9 @@ class StreamProcess:
         idx_next = self.idx + self.chunk_size
         while idx_next <= end_id and idx_next <= len(self._buffer):
             # only get and store what we need
-            current, voltage = stream_buffer.samples_get(self.idx, idx_next, fields=['current', 'voltage'])
-            self._buffer[self.idx:idx_next, 0] = current
-            self._buffer[self.idx:idx_next, 1] = voltage
+            data = stream_buffer.samples_get(self.idx, idx_next, fields=['current', 'voltage'])
+            self._buffer[self.idx:idx_next, 0] = data['signals']['current']['value']
+            self._buffer[self.idx:idx_next, 1] = data['signals']['voltage']['value']
             self.idx = idx_next
             idx_next += self.chunk_size
 
