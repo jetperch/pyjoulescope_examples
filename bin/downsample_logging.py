@@ -371,14 +371,14 @@ class LoggerDevice:
         self._offset = [0.0, 0.0, 0.0]  # [time, charge, energy]
         self._downsample_counter = 0
         self._downsample_state = {
-            'μ': np.zeros(3, dtype=np.float),
+            'µ': np.zeros(3, dtype=np.float),
             'min': np.zeros(1, dtype=np.float),
             'max': np.zeros(1, dtype=np.float),
         }
         self._downsample_state_reset()
 
     def _downsample_state_reset(self):
-        self._downsample_state['μ'][:] = 0.0
+        self._downsample_state['µ'][:] = 0.0
         self._downsample_state['min'][:] = FLOAT_MAX
         self._downsample_state['max'][:] = -FLOAT_MAX
 
@@ -467,13 +467,13 @@ class LoggerDevice:
             columns = ['time', 'current', 'voltage', 'power', 'charge', 'energy',
                        'current_min', 'current_max']
             units = ['s',
-                     data['signals']['current']['μ']['units'],
-                     data['signals']['voltage']['μ']['units'],
-                     data['signals']['power']['μ']['units'],
+                     data['signals']['current']['µ']['units'],
+                     data['signals']['voltage']['µ']['units'],
+                     data['signals']['power']['µ']['units'],
                      data['accumulators']['charge']['units'],
                      data['accumulators']['energy']['units'],
-                     data['signals']['current']['μ']['units'],
-                     data['signals']['current']['μ']['units'],
+                     data['signals']['current']['µ']['units'],
+                     data['signals']['current']['µ']['units'],
                      ]
             columns_csv = ','.join(columns)
             units_csv = ','.join(units)
@@ -488,19 +488,19 @@ class LoggerDevice:
                 self._f_csv.write(f'#= start_str={parent._time_str}\n')
             self._f_csv.flush()
         t = now - parent._start_time_s + self._offset[0]
-        i = data['signals']['current']['μ']['value']
-        v = data['signals']['voltage']['μ']['value']
-        p = data['signals']['power']['μ']['value']
+        i = data['signals']['current']['µ']['value']
+        v = data['signals']['voltage']['µ']['value']
+        p = data['signals']['power']['µ']['value']
         c = data['accumulators']['charge']['value'] + self._offset[1]
         e = data['accumulators']['energy']['value'] + self._offset[2]
         i_min = data['signals']['current']['min']['value']
         i_max = data['signals']['current']['max']['value']
-        self._downsample_state['μ'] += [i, v, p]
+        self._downsample_state['µ'] += [i, v, p]
         self._downsample_state['min'] = np.minimum([i_min], self._downsample_state['min'])
         self._downsample_state['max'] = np.maximum([i_max], self._downsample_state['max'])
         self._downsample_counter += 1
         if self._downsample_counter >= parent._downsample:
-            s = self._downsample_state['μ'] / self._downsample_counter
+            s = self._downsample_state['µ'] / self._downsample_counter
             self._downsample_counter = 0
             self._last = (t, *s, c, e, *self._downsample_state['min'], *self._downsample_state['max'])
             self._downsample_state_reset()
