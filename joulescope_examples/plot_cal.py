@@ -26,7 +26,7 @@ import psutil
 
 def plot_axis(axis, x, y, label=None):
     if label is not None:
-        axis.set_ylabel('Current (A)')
+        axis.set_ylabel(label)
     axis.grid(True)
 
     axis.plot(x, y)
