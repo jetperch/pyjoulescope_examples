@@ -414,7 +414,8 @@ class LoggerDevice:
         parent.on_event('DEVICE', 'OPEN ' + self._device_str)
         self._resume()
         self._f_csv = open(self.csv_filename, 'at+')
-        device.reduction_frequency = self._parent()._frequency
+        f = self._parent()._frequency
+        device.parameter_set('reduction_frequency', f'{f} Hz')
         device.open(event_callback_fn=self.on_event_cbk)
         info = device.info()
         self._parent().on_event('DEVICE_INFO', json.dumps(info))
