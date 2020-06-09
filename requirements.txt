@@ -1,2 +1,2 @@
-joulescope>=0.6.10
+joulescope>=0.8.0
 matplotlib

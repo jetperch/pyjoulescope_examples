@@ -22,7 +22,7 @@ If you just want to use Joulescope, you can
 
 Verify that Python 3.6+ is installed on your computer:
 
-    python3 -V -V
+    python3 -VV
     
 On Windows, "python3" may not be created by default.  You can try "python -V -V"
 if your path is configured correctly, or you can provide the full path to your
@@ -44,11 +44,16 @@ Alternatively, you can just
 [download the latest](https://github.com/jetperch/pyjoulescope_examples/archive/master.zip) 
 version directly from GitHub, and then extract the ZIP file.
 
-Install the dependencies:
+Next, cd into the repository directory:
 
     cd pyjoulescope_examples
-    pip3 install -r requirements.txt
     
+and install the dependencies:
+
+    pip3 install -U -r requirements.txt
+
+Note that some examples use matplotlib, so be sure to run this last command!
+
     
 ### Use this code:
 
