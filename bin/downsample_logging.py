@@ -82,6 +82,7 @@ List of requested future features:
 """
 
 import joulescope
+from joulescope.data_recorder import DataRecorder
 import signal
 import argparse
 import time
@@ -107,7 +108,10 @@ MAX_SAMPLES = 1000000000 / 5  # limit to 1 GB of RAM
 CSV_SEEK = 4096
 LAST_INITIALIZE = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 USER_NOTIFY_INTERVAL_S = 10.0
-FREQUENCIES = 1, 2, 4, 10, 20, 50, 100
+FREQUENCIES = [1, 2, 4, 10, 20, 50, 100]
+SAMPLING_FREQUENCIES = [2000000, 1000000, 500000, 200000, 100000, 50000,
+                        20000, 10000, 5000, 2000, 1000, 500, 200,
+                        100, 50, 20, 10]
 FLOAT_MAX = np.finfo(np.float).max
 
 
@@ -159,6 +163,10 @@ def get_parser():
                    choices=FREQUENCIES,
                    type=int,
                    help='The base collection frequency in Hz.  Defaults to 2.')
+    p.add_argument('--jls', '-j',
+                   type=int,
+                   choices=SAMPLING_FREQUENCIES,
+                   help='Store JLS file with downsampling frequency.')
 
     return p
 
@@ -182,9 +190,12 @@ class Logger:
     :param frequency: The base frequency, which defaults to 2 Hz.
     :param resume: Use False or None to start a new logging session.
         Provide True to resume the most recent logging session.
+    :param jls_sampling_frequency: The sampling frequency for storing JLS files.
+        None (default) does not store a JLS file.
     """
 
-    def __init__(self, header=None, downsample=None, frequency=None, resume=None):
+    def __init__(self, header=None, downsample=None, frequency=None, resume=None,
+                 jls_sampling_frequency=None):
         self._start_time_s = None
         self._f_event = None
         self._time_str = None
@@ -196,6 +207,7 @@ class Logger:
         self._user_notify_time_last = 0.0
         self._faults = []
         self._resume = bool(resume)
+        self._jls_sampling_frequency = jls_sampling_frequency
         self._header = header
         self._base_filename = None
         if self._frequency not in FREQUENCIES:
@@ -241,6 +253,12 @@ class Logger:
                         self._downsample = int(value)
                     elif name == 'frequency':
                         self._frequency = int(value)
+                    elif name == 'jls_sampling_frequency':
+                        if value in [None, 'None']:
+                            value = None
+                        else:
+                            value = int(value)
+                        self._jls_sampling_frequency = value
                 if 'DEVICES ' in line:
                     device_strs = line.split(' DEVICES : ')[-1].split(',')
                     self._devices_create(device_strs)
@@ -267,6 +285,7 @@ class Logger:
             self.on_event('PARAM', f'start_str={self._time_str}')
             self.on_event('PARAM', f'downsample={self._downsample}')
             self.on_event('PARAM', f'frequency={self._frequency}')
+            self.on_event('PARAM', f'jls_sampling_frequency={self._jls_sampling_frequency}')
 
             devices = joulescope.scan()
             device_strs = [str(device) for device in devices]
@@ -351,7 +370,8 @@ class Logger:
                     if event == 'DEVICE_CLOSE':
                         message.close()
             for device in self._devices:
-                device.stop()
+                msg = device.stop()
+                self.on_event('SUMMARY', msg)
         except Exception as ex:
             self.log.exception('while capturing data')
             self.on_event('FAIL', str(ex))
@@ -366,6 +386,7 @@ class LoggerDevice:
         self._device_str = device_str
         self._device = None
         self._f_csv = None
+        self._jls_recorder = None
 
         self._last = None  # (all values in csv)
         self._offset = [0.0, 0.0, 0.0]  # [time, charge, energy]
@@ -416,7 +437,16 @@ class LoggerDevice:
         self._f_csv = open(self.csv_filename, 'at+')
         f = self._parent()._frequency
         device.parameter_set('reduction_frequency', f'{f} Hz')
+        sampling_frequency = self._parent()._jls_sampling_frequency
+        if sampling_frequency is not None:
+            device.parameter_set('sampling_frequency', sampling_frequency)
         device.open(event_callback_fn=self.on_event_cbk)
+        if sampling_frequency is not None:
+            time_str = now_str()
+            base_filename = 'jslog_%s_%s.jls' % (time_str, device.device_serial_number)
+            filename = os.path.join(BASE_PATH, base_filename)
+            self._jls_recorder = DataRecorder(filename, calibration=device.calibration)
+            device.stream_process_register(self._jls_recorder)
         info = device.info()
         self._parent().on_event('DEVICE_INFO', json.dumps(info))
         device.statistics_callback = self.on_statistics
@@ -431,8 +461,16 @@ class LoggerDevice:
         try:
             if self._device is not None:
                 self._device.stop()
+            if self._jls_recorder is not None:
+                self._device.stream_process_unregister(self._jls_recorder)
+                self._jls_recorder.close()
+                self._jls_recorder = None
         except Exception:
             pass
+        charge, energy = self._last[4], self._last[5]
+        msg = f'{self._device} : duration={self.duration:.0f}, charge={charge:g}, energy={energy:g}'
+        print(msg)
+        return msg
 
     def on_event_cbk(self, event=0, message=''):
         self._parent().on_event_cbk(self, event, message)
@@ -454,6 +492,12 @@ class LoggerDevice:
         if self._f_csv is not None:
             self._f_csv.write(text)
 
+    @property
+    def duration(self):
+        now = time.time()
+        t = now - self._parent()._start_time_s + self._offset[0]
+        return t
+
     def on_statistics(self, data):
         """Process the next Joulescope downsampled 2 Hz data.
 
@@ -461,12 +505,12 @@ class LoggerDevice:
             See :meth:`joulescope.View.statistics_get` for details.
         """
         # called from the Joulescope device thread
-        now = time.time()
         parent = self._parent()
         if self._last is None:
             self._last = LAST_INITIALIZE
-            columns = ['time', 'current', 'voltage', 'power', 'charge', 'energy',
-                       'current_min', 'current_max']
+
+            columns = ['time', 'current', 'voltage', 'power', 'charge',
+                       'energy', 'current_min', 'current_max']
             units = ['s',
                      data['signals']['current']['µ']['units'],
                      data['signals']['voltage']['µ']['units'],
@@ -488,7 +532,7 @@ class LoggerDevice:
                 self._f_csv.write(f'#= start_time={parent._start_time_s}\n')
                 self._f_csv.write(f'#= start_str={parent._time_str}\n')
             self._f_csv.flush()
-        t = now - parent._start_time_s + self._offset[0]
+        t = self.duration
         i = data['signals']['current']['µ']['value']
         v = data['signals']['voltage']['µ']['value']
         p = data['signals']['power']['µ']['value']
@@ -518,7 +562,8 @@ def run():
         datefmt='%Y-%m-%dT%H:%M:%S')
     print('Starting logging - press CTRL-C to stop')
     with Logger(header=args.header, downsample=args.downsample,
-                frequency=args.frequency, resume=args.resume) as logger:
+                frequency=args.frequency, resume=args.resume,
+                jls_sampling_frequency=args.jls) as logger:
         return logger.run()
 
 
