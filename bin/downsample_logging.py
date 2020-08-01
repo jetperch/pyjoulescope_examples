@@ -167,7 +167,10 @@ def get_parser():
                    type=int,
                    choices=SAMPLING_FREQUENCIES,
                    help='Store JLS file with downsampling frequency.')
-
+    p.add_argument('--source', '-s',
+                   default='stream_buffer',
+                   choices=['stream_buffer', 'sensor'],
+                   help='Select the source for the accumulator data.')
     return p
 
 
@@ -192,10 +195,10 @@ class Logger:
         Provide True to resume the most recent logging session.
     :param jls_sampling_frequency: The sampling frequency for storing JLS files.
         None (default) does not store a JLS file.
+    :param source: The statistic data source.
     """
-
     def __init__(self, header=None, downsample=None, frequency=None, resume=None,
-                 jls_sampling_frequency=None):
+                 jls_sampling_frequency=None, source=None):
         self._start_time_s = None
         self._f_event = None
         self._time_str = None
@@ -208,6 +211,7 @@ class Logger:
         self._faults = []
         self._resume = bool(resume)
         self._jls_sampling_frequency = jls_sampling_frequency
+        self._source = source
         self._header = header
         self._base_filename = None
         if self._frequency not in FREQUENCIES:
@@ -259,6 +263,8 @@ class Logger:
                         else:
                             value = int(value)
                         self._jls_sampling_frequency = value
+                    elif name == 'source':
+                        self._source = value
                 if 'DEVICES ' in line:
                     device_strs = line.split(' DEVICES : ')[-1].split(',')
                     self._devices_create(device_strs)
@@ -286,6 +292,7 @@ class Logger:
             self.on_event('PARAM', f'downsample={self._downsample}')
             self.on_event('PARAM', f'frequency={self._frequency}')
             self.on_event('PARAM', f'jls_sampling_frequency={self._jls_sampling_frequency}')
+            self.on_event('PARAM', f'source={self._source}')
 
             devices = joulescope.scan()
             device_strs = [str(device) for device in devices]
@@ -362,8 +369,10 @@ class Logger:
                 closed_count = self._open_devices()
                 if closed_count:
                     time.sleep(0.25)
-
                 time.sleep(0.1)  # data is received on device's thread
+                if self._source == 'sensor':
+                    for device in self._devices:
+                        device.status()
                 while len(self._faults):  # handle faults on our thread
                     event, message = self._faults.pop(0)
                     self.on_event('EVENT', f'{event} {message}')
@@ -435,13 +444,14 @@ class LoggerDevice:
         parent.on_event('DEVICE', 'OPEN ' + self._device_str)
         self._resume()
         self._f_csv = open(self.csv_filename, 'at+')
-        f = self._parent()._frequency
+        f = parent._frequency
+        source = parent._source
         device.parameter_set('reduction_frequency', f'{f} Hz')
-        sampling_frequency = self._parent()._jls_sampling_frequency
-        if sampling_frequency is not None:
-            device.parameter_set('sampling_frequency', sampling_frequency)
+        jls_sampling_frequency = parent._jls_sampling_frequency
+        if jls_sampling_frequency is not None:
+            device.parameter_set('sampling_frequency', jls_sampling_frequency)
         device.open(event_callback_fn=self.on_event_cbk)
-        if sampling_frequency is not None:
+        if jls_sampling_frequency is not None:
             time_str = now_str()
             base_filename = 'jslog_%s_%s.jls' % (time_str, device.device_serial_number)
             filename = os.path.join(BASE_PATH, base_filename)
@@ -449,10 +459,12 @@ class LoggerDevice:
             device.stream_process_register(self._jls_recorder)
         info = device.info()
         self._parent().on_event('DEVICE_INFO', json.dumps(info))
-        device.statistics_callback = self.on_statistics
-        device.parameter_set('source', 'raw')
+        device.statistics_callback_register(self.on_statistics, source)
         device.parameter_set('i_range', 'auto')
-        device.start(stop_fn=self.on_stop)
+        device.parameter_set('v_range', '15V')
+        if source == 'stream_buffer' or jls_sampling_frequency is not None:
+            device.parameter_set('source', 'raw')
+            device.start(stop_fn=self.on_stop)
         self._device = device
         self.is_open = True
         return self
@@ -491,6 +503,9 @@ class LoggerDevice:
     def write(self, text):
         if self._f_csv is not None:
             self._f_csv.write(text)
+
+    def status(self):
+        return self._device.status()
 
     @property
     def duration(self):
@@ -563,7 +578,7 @@ def run():
     print('Starting logging - press CTRL-C to stop')
     with Logger(header=args.header, downsample=args.downsample,
                 frequency=args.frequency, resume=args.resume,
-                jls_sampling_frequency=args.jls) as logger:
+                jls_sampling_frequency=args.jls, source=args.source) as logger:
         return logger.run()
 
 

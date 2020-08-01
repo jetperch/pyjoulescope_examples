@@ -47,6 +47,10 @@ def get_parser():
                    default=60,
                    type=int_or_none,
                    help='The interval to periodically print the accumulated value in seconds.')
+    p.add_argument('--source', '-s',
+                   default='stream_buffer',
+                   choices=['stream_buffer', 'sensor'],
+                   help='Select the source for the accumulator data.')
     return p
 
 
@@ -70,7 +74,7 @@ class Accumulators:
 
     def _on_statistics(self, statistics):
         self._statistics = statistics
-        duration_now = self._statistics['time']['range']['value'][-1]
+        duration_now = self._statistics['time']['range']['value'][0]
         if duration_now >= self._update_previous + self._update_interval:
             print(self._statistics_to_user_str())
             self._update_previous += self._update_interval
@@ -79,35 +83,52 @@ class Accumulators:
         if self._statistics is None:
             return "no statistics"
         duration = self._statistics['time']['range']
-        charge = self._statistics['signals']['current']['∫']
-        energy = self._statistics['signals']['power']['∫']
-        duration_str = f"{int(duration['value'][-1])} {duration['units']}"
+        charge = self._statistics['accumulators']['charge']
+        energy = self._statistics['accumulators']['energy']
+        duration_str = f"{int(duration['value'][0])} {duration['units']}"
         charge_str = three_sig_figs(charge['value'], charge['units'])
         energy_str = three_sig_figs(energy['value'], energy['units'])
         msg = f'duration = {duration_str}, charge = {charge_str}, energy = {energy_str}'
         return msg
 
-    def run(self):
-        args = get_parser().parse_args()
-        self._update_interval = args.update
+    def _display_run_info(self, args):
+        if args.duration:
+            print(f'Accumulation in progress for {args.duration} seconds.')
+        else:
+            print('Accumulation in progress.')
+        print(f'Updates displayed every {args.update} seconds.')
+        print('Press CTRL-C to stop.\n')
+
+    def _run_stream_buffer(self, args):
         device = scan_require_one(config='auto')
         device.parameter_set('buffer_duration', 1)
         signal.signal(signal.SIGINT, self._on_user_exit)
-
-        # Perform the data capture
         with device:
             device.statistics_callback = self._on_statistics
             device.start(stop_fn=self._on_stop, duration=args.duration)
-            if args.duration:
-                print(f'Accumulation in progress for {args.duration} seconds.')
-            else:
-                print('Accumulation in progress.')
-            print(f'Updates displayed every {args.update} seconds.')
-            print('Press CTRL-C to stop.\n')
+            self._display_run_info(args)
             while not self._quit:
                 time.sleep(0.01)
-            device.stop()  # for CTRL-C handling (safe for duplicate calls)
-        
+
+    def _run_sensor(self, args):
+        device = scan_require_one(config='off')
+        device.statistics_callback_register(self._on_statistics, 'sensor')
+        with device:
+            device.parameter_set('i_range', 'auto')
+            device.parameter_set('v_range', '15V')
+            self._display_run_info(args)
+            while not self._quit:
+                device.status()
+                time.sleep(0.1)
+
+    def run(self):
+        args = get_parser().parse_args()
+        self._update_interval = args.update
+        if args.source == 'stream_buffer':
+            self._run_stream_buffer(args)
+        elif args.source == 'sensor':
+            self._run_sensor(args)
+
         print(self._statistics_to_user_str())
         return 0
 
