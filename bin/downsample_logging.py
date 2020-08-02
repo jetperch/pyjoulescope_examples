@@ -450,6 +450,7 @@ class LoggerDevice:
         jls_sampling_frequency = parent._jls_sampling_frequency
         if jls_sampling_frequency is not None:
             device.parameter_set('sampling_frequency', jls_sampling_frequency)
+        device.parameter_set('buffer_duration', 2)
         device.open(event_callback_fn=self.on_event_cbk)
         if jls_sampling_frequency is not None:
             time_str = now_str()
