@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2019 Jetperch LLC
+# Copyright 2019-2020 Jetperch LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Print the energy consumption recorded by Joulescope."""
+"""Print the energy consumption recorded by Joulescope using on-instrument
+sensor computation."""
 
 from joulescope import scan_require_one
 from joulescope.units import three_sig_figs
 import signal
+import time
 import queue
 
 
@@ -31,16 +33,22 @@ def run():
 
     signal.signal(signal.SIGINT, stop_fn)  # also quit on CTRL-C
 
-    with scan_require_one(config='auto') as device:
-        device.statistics_callback = statistics_queue.put  # put data in queue
-        device.start(stop_fn=stop_fn)
+    with scan_require_one(config='off') as device:
+        device.statistics_callback_register(statistics_queue.put, 'sensor')
+        device.parameter_set('i_range', 'auto')
+        device.parameter_set('v_range', '15V')
         print('CTRL-C to exit')
         while True:
-            data = statistics_queue.get()
-            if data is None:
-                break
-            energy = data['accumulators']['energy']
-            print(three_sig_figs(energy['value'], units=energy['units']))
+            device.status()
+            time.sleep(0.1)
+            try:
+                data = statistics_queue.get(block=False)
+                if data is None:
+                    break
+                energy = data['accumulators']['energy']
+                print(three_sig_figs(energy['value'], units=energy['units']))
+            except queue.Empty:
+                pass
 
 
 if __name__ == '__main__':
