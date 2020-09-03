@@ -4,6 +4,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.9.0
+
+2020 Sep 3
+
+*   Added statistics example that displays on-instrument statistics from all connected Joulescopes.
+
+
 ## 0.8.7
 
 2020 Jul 8
