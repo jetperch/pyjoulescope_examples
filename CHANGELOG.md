@@ -8,7 +8,12 @@ This file contains the list of changes made to pyjoulescope_examples.
 
 2020 Sep 3
 
-*   Added statistics example that displays on-instrument statistics from all connected Joulescopes.
+*   Added statistics example that displays on-instrument statistics from all
+    connected Joulescopes.
+*   Added energy printer from sensor.
+    *   Added new example that uses sensor-side statistics.
+    *   Renamed energy_printer.py to energy_printer_host.py.
+*   Reduced memory footprint for downsample_logging.
 
 
 ## 0.8.7
