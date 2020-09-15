@@ -4,6 +4,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.9.1
+
+2020 Sep 15
+
+*   Added "scan_by_serial_number.py" example.
+
+
 ## 0.9.0
 
 2020 Sep 3
