@@ -14,7 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Scan a device by serial number."""
+"""Scan a device by serial number.
+
+usage: python scan_by_serial_number.py
+usage: python scan_by_serial_number.py {serial_number}
+"""
 
 
 from joulescope import scan
