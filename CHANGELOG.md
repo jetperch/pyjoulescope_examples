@@ -4,6 +4,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.9.2
+
+2020 Dec 16
+
+*   Added "capture_all.py" example.
+
+
 ## 0.9.1
 
 2020 Sep 15
