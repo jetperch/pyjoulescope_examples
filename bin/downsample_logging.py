@@ -100,7 +100,7 @@ try:
     DOCUMENTS_PATH = shell.SHGetFolderPath(0, shellcon.CSIDL_PERSONAL, None, 0)
     BASE_PATH = os.path.join(DOCUMENTS_PATH, 'joulescope')
 
-except:
+except Exception:
     BASE_PATH = os.path.expanduser('~/Documents/joulescope')
 
 
@@ -227,7 +227,7 @@ class Logger:
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
             self.close()
-        except:
+        except Exception:
             self.log.exception('While closing during __exit__')
 
     def _devices_create(self, device_strs):
