@@ -124,19 +124,27 @@ def run():
     device = scan_require_one(config='auto')
     signal.signal(signal.SIGINT, on_stop)
     window_detect = WindowDetect(args.out)
+    gpo = 0
+    gpo_count = 0
 
     # Perform the data capture
     with device:
         device.parameter_set('current_lsb', 'gpi0')
         device.parameter_set('io_voltage', f'{args.io_voltage:.1f}V')
-        device.parameter_set('gpo0', '0')
+        device.parameter_set('gpo0', gpo)
         device.parameter_set('gpo1', '1')
         device.start(stop_fn=on_stop)
         print('Detecting triggers.  Press CTRL-C to exit.')
         print(CSV_HEADER)
         while not _quit:
             time.sleep(0.1)
+            gpo_count += 1
+            if gpo_count >= 10:
+                gpo = 0 if gpo else 1
+                device.parameter_set('gpo0', gpo)
+                gpo_count = 0
             window_detect(device.stream_buffer)
+            
         device.stop()  # for CTRL-C handling (safe for duplicate calls)
         window_detect.close()
     return 0
