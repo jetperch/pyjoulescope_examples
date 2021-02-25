@@ -4,6 +4,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.9.3
+
+2021 Feb 25
+
+*   Added "windowed_accum.py" example.
+
+
 ## 0.9.2
 
 2020 Dec 16
