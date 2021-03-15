@@ -81,7 +81,8 @@ import time
 _quit = False
 GAIN = 1e15
 log = logging.getLogger()
-COLUMNS = 'current_mean(A),current_min(A),current_max(A),' + \
+COLUMNS = 'start_time(samples),start_time(iso),end_time(samples),end_time(iso),' + \
+          'current_mean(A),current_min(A),current_max(A),' + \
           'voltage_mean(V),voltage_min(V),voltage_max(V),' + \
           'power_mean(W),power_min(W),power_max(W),' + \
           'charge(C),charge(Ah),' + \
@@ -157,6 +158,11 @@ def get_parser():
     return p
 
 
+def _current_time_str():
+    t = datetime.datetime.utcnow()
+    return t.isoformat()
+
+
 class Signal:
     
     def __init__(self):
@@ -201,7 +207,6 @@ class Capture:
         self._csv = None
         self._count = 0
         self._triggered = False
-        self._sample_id_entry = None
         self._sample_id_last = None
         self._start_fn = getattr(self, f'_start_{args.start}')
         self._end_fn = getattr(self, f'_end_{args.end}')
@@ -210,6 +215,8 @@ class Capture:
         self._power = Signal()
         self._charge = 0  # in 1e-15 C, use Python int for infinite precision
         self._energy = 0  # in 1e-15 J, use Python int for infinite precision
+        self._time_start = None  # [sample, timestr]
+        self._time_end = None
         
         if self._args.csv is not None:
             self._csv = open(self._args.csv, 'wt')
@@ -223,6 +230,7 @@ class Capture:
     def start(self, start_id):
         if self._triggered:
             self.stop()
+        self._time_start = [start_id, _current_time_str()]
         log.info(f'start {start_id}')
         if self._args.display_trigger:
             print(f'start {start_id}')
@@ -236,33 +244,38 @@ class Capture:
             self._record = DataRecorder(filename,
                                         calibration=self._device.calibration)
         self._triggered = True
-        self._sample_id_entry = start_id
         return start_id
 
     def stop(self, end_id=None):
         if not self._triggered:
             return
+        if end_id is None:
+            end_id = self._sample_id_last
+        self._time_end = [end_id, _current_time_str()]
         if self._record:
             self._record.close()
             self._record = None
-        if end_id is None:
-            end_id = self._sample_id_last
         log.info(f'stop {end_id}')
         if self._args.display_trigger:
             print(f'stop {end_id}')
 
         self._count += 1
-        sample_count = end_id - self._sample_id_entry
         current = self._current.result()
         voltage = self._voltage.result()
         power = self._power.result()
         charge = self._charge / GAIN
         energy = self._energy / GAIN
-        r = current + voltage + power + [charge, charge * 3600] + [energy, energy * 3600]
+        r = self._time_start + self._time_end + \
+            current + voltage + power + \
+            [charge, charge / 3600.0] + [energy, energy / 3600.0]
         results = []
         for x in r:
             if x is None:
                 results.append('NAN')
+            elif isinstance(x, int):
+                results.append(str(x))
+            elif isinstance(x, str):
+                results.append(x)
             else:
                 results.append('%g' % x)
         line = ','.join(results)
@@ -275,7 +288,6 @@ class Capture:
             self._csv.write(line + '\n')
             self._csv.flush()
         self._triggered = False
-        self._sample_id_entry = end_id
         return end_id
         
     def close(self):
@@ -345,10 +357,10 @@ class Capture:
         return self._in_edge_falling(stream_buffer, field, start_id, end_id)
 
     def _start_duration(self, stream_buffer, start_id, end_id):
-        if self._sample_id_entry is None:
-            self._sample_id_entry = start_id
+        if self._time_end is None:
+            self._time_end = [start_id, _current_time_str()]
         d = int(self._args.start_duration * stream_buffer.output_sampling_frequency)
-        d += self._sample_id_entry
+        d += self._time_end[0]
         if end_id > d:
             return d
         else:
@@ -390,7 +402,7 @@ class Capture:
 
     def _end_duration(self, stream_buffer, start_id, end_id):
         d = int(self._args.capture_duration * stream_buffer.output_sampling_frequency)
-        d += self._sample_id_entry
+        d += self._time_start[0]
         if end_id > d:
             return d
         else:
@@ -401,7 +413,7 @@ class Capture:
         if self._sample_id_last is not None and start_id < self._sample_id_last:
             start_id = self._sample_id_last
         if start_id >= end_id:
-            return False # nothing to process
+            return False  # nothing to process
 
         gpi = stream_buffer.samples_get(start_id, end_id, fields='current_lsb')
         while start_id < end_id:
