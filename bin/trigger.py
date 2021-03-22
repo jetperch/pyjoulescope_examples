@@ -43,25 +43,25 @@ Example 4: Capture data to JLS files
 Requirements:
 1.  Capture data over a window
 2.  At end of the window, option to print to screen and/or CSV:
-    2a. Mean, min, max for current, voltage, power
-    2b. Charge in C and Ah
-    2c. Energy in J and Wh
+    2a. Mean, min, max for current, voltage, power
+    2b. Charge in C and Ah
+    2c. Energy in J and Wh
 3.  Record window to JLS file (option)
 4.  Trigger window capture start on:
-    4a. Joulescope GPI0 level low
-    4b. Joulescope GPI0 level high
-    4c. Joulescope GPI0 edge low → high
-    4d. Joulescope GPI0 edge high → low
-    4e. After a configurable duration
+    4a. Joulescope GPI0 level low
+    4b. Joulescope GPI0 level high
+    4c. Joulescope GPI0 edge low → high
+    4d. Joulescope GPI0 edge high → low
+    4e. After a configurable duration
 5.  Configure the current range
 6.  Configure voltage range for 5V or 15V
 7.  Option to power off device for a configurable duration at the start of the script
 8.  Option to power off device at the end of the script
 9.  Trigger window capture end on:
-    9a. Joulescope GPI0 level low
-    9b. Joulescope GPI0 level high
-    9c. Joulescope GPI0 edge low → high
-    9d. Joulescope GPI0 edge high → low
+    9a. Joulescope GPI0 level low
+    9b. Joulescope GPI0 level high
+    9c. Joulescope GPI0 edge low → high
+    9d. Joulescope GPI0 edge high → low
     9e. After a configurable duration
     9f. CTRL-C
 10. Capture numerous windows (defaults to 1)
@@ -134,7 +134,7 @@ def get_parser():
     p.add_argument('--init_power_off',
                    default=0.0,
                    type=float,
-                   help='The inital DUT power off duration (power cycle).')
+                   help='The initial DUT power off duration (power cycle).')
     p.add_argument('--power_off',
                    action='store_true',
                    help='Power off the DUT when done.')
@@ -155,6 +155,8 @@ def get_parser():
     p.add_argument('--self_test',
                    action='store_true',
                    help='Self-test mode that toggles OUT0.')
+    p.add_argument('--sampling_frequency',
+                   help='The device sampling frequency.  Default is maximum supported by device.')
     return p
 
 
@@ -467,9 +469,11 @@ def run():
     args = get_parser().parse_args()
     device = scan_require_one(config='ignore')
     device.parameter_set('buffer_duration', 10)
+    if args.sampling_frequency is not None:
+        device.parameter_set('sampling_frequency', int(args.sampling_frequency))
     signal.signal(signal.SIGINT, _on_stop)
     gpo = 0
-    gpo_count = 0    
+    gpo_count = 0
 
     # Perform the data capture
     with device:
