@@ -370,17 +370,22 @@ class Capture:
 
     def _add(self, stream_buffer, start_id, end_id):
         data = stream_buffer.samples_get(start_id, end_id)
-        i = data['signals']['current']['value']
-        v = data['signals']['voltage']['value']
-        p = data['signals']['power']['value']
-        self._current.add(i)
-        self._voltage.add(v)
-        self._power.add(p)
-        period = 1.0 / stream_buffer.output_sampling_frequency
-        self._charge += int(np.sum(i) * period * GAIN)
-        self._energy += int(np.sum(p) * period * GAIN)
-        if self._record is not None:
-            self._record.insert(data)
+        i_all = data['signals']['current']['value']
+        v_all = data['signals']['voltage']['value']
+        p_all = data['signals']['power']['value']
+        finite_idx = np.isfinite(i_all)
+        i, v, p = i_all[finite_idx], v_all[finite_idx], p_all[finite_idx]
+        if len(i) != len(i_all):
+            print(f'Ignored {len(i_all) - len(i)} missing samples')
+        if len(i):
+            self._current.add(i)
+            self._voltage.add(v)
+            self._power.add(p)
+            period = 1.0 / stream_buffer.output_sampling_frequency
+            self._charge += int(np.sum(i) * period * GAIN)
+            self._energy += int(np.sum(p) * period * GAIN)
+            if self._record is not None:
+                self._record.insert(data)
         return end_id
 
     def _end_none(self, stream_buffer, start_id, end_id):
@@ -483,7 +488,7 @@ def run():
         if ('in0' in args.start_signal and args.start in IO_TRIG) or ('in0' in args.end_signal and args.end in IO_TRIG):
             device.parameter_set('current_lsb', 'gpi0')
         if ('in1' in args.start_signal and args.start in IO_TRIG) or ('in1' in args.end_signal and args.end in IO_TRIG):
-            device.parameter_set('current_lsb', 'gpi0')
+            device.parameter_set('voltage_lsb', 'gpi1')
         capture = Capture(device, args)
         device.parameter_set('source', 'on')
         _power_off(device, args.init_power_off)

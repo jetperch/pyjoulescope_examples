@@ -4,6 +4,15 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.9.5
+
+2021 Jun 17
+
+*   Fixed "trigger.py" example.
+    *    Ignore missing samples.
+    *    Fixed IN1 support.
+
+
 ## 0.9.4
 
 2021 Mar 8
