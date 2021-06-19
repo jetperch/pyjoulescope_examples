@@ -20,7 +20,7 @@ Get data from Joulescope over regions of interest.
 
 Example 1: Capture to a single window using IN0 with self-test
 
-    Connect OUT0 to IN1 using a wire.  Then run:
+    Connect OUT0 to IN0 using a wire.  Then run:
     
     python3 trigger.py --start rising --end falling --csv myout.csv --display_trigger --display_stats --self_test
 
