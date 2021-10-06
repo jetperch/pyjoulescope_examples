@@ -4,6 +4,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.9.8
+
+2021 Oct 6
+
+*   Created statistics_logging.py example.
+
+
 ## 0.9.7
 
 2021 Aug 18
