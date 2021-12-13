@@ -39,6 +39,8 @@ def get_parser():
                    type=duration_to_seconds,
                    help='The capture duration in float seconds. '
                    + 'Add a suffix for other units: s=seconds, m=minutes, h=hours, d=days')
+    p.add_argument('--frequency', '-f',
+                   help='The sampling frequency in Hz.')
     p.add_argument('--jls',
                    default=1,
                    type=int,
@@ -78,7 +80,17 @@ def run():
         device = scan_by_serial_number(args.serial_number, config='auto')
     else:
         device = scan_require_one(config='auto')
-        
+
+    if args.frequency:
+        try:
+            device.parameter_set('sampling_frequency', int(args.frequency))
+        except Exception:
+            # bad frequency selected, display warning & exit gracefully
+            freqs = [f[2][0] for f in device.parameters('sampling_frequency').options]
+            print(f'Unsupported frequency selected: {args.frequency}')
+            print(f'Supported frequencies = {freqs}')
+            return 1
+
     with device:
         if args.jls == 1:
             recorder = DataRecorder(args.filename, calibration=device.calibration)
