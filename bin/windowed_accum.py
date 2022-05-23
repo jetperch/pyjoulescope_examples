@@ -88,29 +88,31 @@ class WindowDetect:
             return  # nothing to process
         if self.sample_id_last is None:
             self.sample_id_last = start_id
+        elif self.sample_id_last < start_id:
+            print(f'#Warning: missing {start_id - self.sample_id_last} samples')
+            self.sample_id_last = start_id
         elif self.sample_id_last >= end_id:
             return  # nothing to process
         gpi = stream_buffer.samples_get(self.sample_id_last, end_id, fields='current_lsb')
-        while start_id < end_id:
-            start_id_enter = start_id
+        while self.sample_id_last < end_id:
             if self.sample_id_start is None:  # not triggered
                 if np.any(gpi):  # found trigger
                     self.sample_id_start = self.sample_id_last + int(np.argmax(gpi))
                     sample_delta = end_id - self.sample_id_start
                     self.timestamp = time.time() - sample_delta / stream_buffer.output_sampling_frequency
-                    start_id = self.sample_id_start
+                    process_id = self.sample_id_start
                 else:
-                    start_id = end_id
+                    process_id = end_id
             elif not np.all(gpi):  # found end of trigger
                 self.sample_id_end = self.sample_id_last + int(np.argmin(gpi))
                 self._process(stream_buffer, self.sample_id_start, self.sample_id_end)
                 self.sample_id_start = None  # reset trigger
-                start_id = self.sample_id_end
-            else:
-                start_id = end_id
-            samples_consumed = start_id - start_id_enter
+                process_id = self.sample_id_end
+            else:  # remain triggered
+                process_id = end_id
+            samples_consumed = process_id - self.sample_id_last
             gpi = gpi[samples_consumed:]
-            self.sample_id_last = start_id
+            self.sample_id_last = process_id
 
 
 def run():
