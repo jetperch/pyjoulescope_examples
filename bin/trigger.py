@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2019-2021 Jetperch LLC
+# Copyright 2019-2022 Jetperch LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -79,12 +79,12 @@ import time
 
 
 _quit = False
-GAIN = 1e15
+GAIN = int(1e15)
 log = logging.getLogger()
 COLUMNS = 'start_time(samples),start_time(iso),end_time(samples),end_time(iso),' + \
-          'current_mean(A),current_min(A),current_max(A),' + \
-          'voltage_mean(V),voltage_min(V),voltage_max(V),' + \
-          'power_mean(W),power_min(W),power_max(W),' + \
+          'current_mean(A),current_std(A),current_min(A),current_max(A),' + \
+          'voltage_mean(V),voltage_std(V),voltage_min(V),voltage_max(V),' + \
+          'power_mean(W),power_std(W),power_min(W),power_max(W),' + \
           'charge(C),charge(Ah),' + \
           'energy(J),energy(Wh)'
 FIELD_MAP = {'in0': 'current_lsb', 'in1': 'voltage_lsb'}
@@ -184,19 +184,23 @@ def _current_time_str():
 class Signal:
     
     def __init__(self):
-        self._mean = 0
+        # accumulate sx and sx2 using using python's infinite precision int
+        self._sx = 0
+        self._sx2 = 0
         self._min = None
         self._max = None
         self._length = 0
         
     def clear(self):
-        self._mean = 0
+        self._sx = 0
+        self._sx2 = 0
         self._min = None
         self._max = None
         self._length = 0
         
     def add(self, v):
-        self._mean += int(np.sum(v) * GAIN)
+        self._sx += int(np.sum(v) * GAIN)
+        self._sx2 += int(np.sum(np.square(v)) * GAIN * GAIN)
         v_min = np.min(v)
         v_max = np.max(v)
         if self._min is None:
@@ -210,9 +214,14 @@ class Signal:
     def result(self):
         if self._length <= 0:
             v_mean = None
+            v_stddev = None
         else:
-            v_mean = self._mean / (GAIN * self._length)
-        return [v_mean, self._min, self._max]
+            n = int(self._length)                             # int
+            v_mean = self._sx / (GAIN * self._length)         # float div
+            v_var_num = n * self._sx2 - self._sx * self._sx   # int mult & sub
+            v_var = v_var_num  / (n * (n - 1))                # float div
+            v_stddev = np.sqrt(v_var) / GAIN
+        return [v_mean, v_stddev, self._min, self._max, self._length]
 
 
 class Capture:
@@ -288,6 +297,9 @@ class Capture:
         power = self._power.result()
         charge = self._charge / GAIN
         energy = self._energy / GAIN
+        # Standard deviation computation check, for windows that fit in stream_buffer
+        # samples = self._device.stream_buffer.samples_get(self._time_start[0], self._time_end[0], fields=['current'])
+        # print(np.std(samples['signals']['current']['value']))
         r = self._time_start + self._time_end + \
             current + voltage + power + \
             [charge, charge / 3600.0] + [energy, energy / 3600.0]
