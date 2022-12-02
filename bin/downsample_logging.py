@@ -112,7 +112,7 @@ FREQUENCIES = [1, 2, 4, 10, 20, 50, 100]
 SAMPLING_FREQUENCIES = [2000000, 1000000, 500000, 200000, 100000, 50000,
                         20000, 10000, 5000, 2000, 1000, 500, 200,
                         100, 50, 20, 10]
-FLOAT_MAX = np.finfo(np.float).max
+FLOAT_MAX = np.finfo(float).max
 
 
 def now_str():
@@ -401,9 +401,9 @@ class LoggerDevice:
         self._offset = [0.0, 0.0, 0.0]  # [time, charge, energy]
         self._downsample_counter = 0
         self._downsample_state = {
-            'µ': np.zeros(3, dtype=np.float),
-            'min': np.zeros(1, dtype=np.float),
-            'max': np.zeros(1, dtype=np.float),
+            'µ': np.zeros(3, dtype=float),
+            'min': np.zeros(1, dtype=float),
+            'max': np.zeros(1, dtype=float),
         }
         self._downsample_state_reset()
 
