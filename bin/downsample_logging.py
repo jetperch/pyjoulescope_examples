@@ -480,8 +480,11 @@ class LoggerDevice:
                 self._jls_recorder = None
         except Exception:
             pass
-        charge, energy = self._last[4], self._last[5]
-        msg = f'{self._device} : duration={self.duration:.0f}, charge={charge:g}, energy={energy:g}'
+        if self._last is None:
+            msg = f'{self._device} : duration={self.duration:.0f}'
+        else:
+            charge, energy = self._last[4], self._last[5]
+            msg = f'{self._device} : duration={self.duration:.0f}, charge={charge:g}, energy={energy:g}'
         print(msg)
         return msg
 
