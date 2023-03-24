@@ -4,6 +4,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.9.9
+
+2023 Mar 24
+
+* Added monitor example.
+
+
 ## 0.9.8
 
 2021 Oct 6
