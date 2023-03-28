@@ -218,9 +218,13 @@ class Monitor:
         self._driver.open(self._device_prefix)
         self.device_publish('h/fs', self._fs)
         self.device_publish('s/stats/scnt', self._fs // self._summary_fs)
-        self.device_publish('s/i/range/mode', 'auto')
-        self.device_publish('s/v/range/select', '15 V')
-        self.device_publish('s/v/range/mode', 'manual')  # as of 2023-03-24, auto not working well
+        if 'js110' in self._device_prefix:
+            self.device_publish('s/i/range/select', 'auto')
+            self.device_publish('s/v/range/select', '15 V')
+        else:
+            self.device_publish('s/i/range/mode', 'auto')
+            self.device_publish('s/v/range/select', '15 V')
+            self.device_publish('s/v/range/mode', 'manual')  # as of 2023-03-24, auto not working well
         self.device_publish('s/i/ctrl', 1)
         self.device_publish('s/v/ctrl', 1)
         self.device_publish('s/stats/ctrl', 1)
