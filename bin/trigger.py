@@ -82,9 +82,9 @@ _quit = False
 GAIN = int(1e15)
 log = logging.getLogger()
 COLUMNS = 'start_time(samples),start_time(iso),end_time(samples),end_time(iso),' + \
-          'current_mean(A),current_std(A),current_min(A),current_max(A),' + \
-          'voltage_mean(V),voltage_std(V),voltage_min(V),voltage_max(V),' + \
-          'power_mean(W),power_std(W),power_min(W),power_max(W),' + \
+          'current_mean(A),current_std(A),current_min(A),current_max(A),current_length(samples),' + \
+          'voltage_mean(V),voltage_std(V),voltage_min(V),voltage_max(V),voltage_length(samples),' + \
+          'power_mean(W),power_std(W),power_min(W),power_max(W),power_length(samples),' + \
           'charge(C),charge(Ah),' + \
           'energy(J),energy(Wh)'
 FIELD_MAP = {'in0': 'current_lsb', 'in1': 'voltage_lsb'}
