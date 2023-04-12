@@ -171,6 +171,10 @@ def get_parser():
                    default='stream_buffer',
                    choices=['stream_buffer', 'sensor'],
                    help='Select the source for the accumulator data.')
+    p.add_argument('--time',
+                   type=int,
+                   default=None,
+                   help='Enter logging time in seconds.')
     return p
 
 
@@ -198,7 +202,7 @@ class Logger:
     :param source: The statistic data source.
     """
     def __init__(self, header=None, downsample=None, frequency=None, resume=None,
-                 jls_sampling_frequency=None, source=None):
+                 jls_sampling_frequency=None, source=None, test_time=None):
         self._start_time_s = None
         self._f_event = None
         self._time_str = None
@@ -214,6 +218,7 @@ class Logger:
         self._source = source
         self._header = header
         self._base_filename = None
+        self._test_time = test_time
         if self._frequency not in FREQUENCIES:
             raise ValueError(f'Unsupported frequency {self._frequency}')
 
@@ -367,6 +372,9 @@ class Logger:
             self._open_devices(do_notify=False)
             while not self._quit:
                 closed_count = self._open_devices()
+                if self._test_time is not None:
+                    if time.time() - self._start_time_s > self._test_time:
+                        self._quit = True
                 if closed_count:
                     time.sleep(0.25)
                 time.sleep(0.1)  # data is received on device's thread
@@ -579,10 +587,10 @@ def run():
         format='%(asctime)s %(levelname)-8s %(message)s',
         level=logging.WARNING,
         datefmt='%Y-%m-%dT%H:%M:%S')
-    print('Starting logging - press CTRL-C to stop')
+    print(f'Starting logging {f"for {args.time} seconds" if args.time is not None else ""} - press CTRL-C to stop')
     with Logger(header=args.header, downsample=args.downsample,
                 frequency=args.frequency, resume=args.resume,
-                jls_sampling_frequency=args.jls, source=args.source) as logger:
+                jls_sampling_frequency=args.jls, source=args.source, test_time=args.time) as logger:
         return logger.run()
 
 
