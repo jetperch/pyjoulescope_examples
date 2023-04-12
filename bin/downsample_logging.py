@@ -172,9 +172,9 @@ def get_parser():
                    choices=['stream_buffer', 'sensor'],
                    help='Select the source for the accumulator data.')
     p.add_argument('--time',
-		   type=int,
-   		   default=None,
-		   help='Enter logging time in seconds.')
+                   type=int,
+                   default=None,
+                   help='Enter logging time in seconds.')
     return p
 
 
