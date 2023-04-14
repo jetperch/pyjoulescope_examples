@@ -109,6 +109,7 @@ def run():
             device.stop()
         finally:
             recorder.close()
+            device.stream_process_unregister(recorder)
     return 0
 
 

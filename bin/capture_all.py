@@ -88,6 +88,7 @@ def run():
             try:
                 device.stop()
                 recorder.close()
+                device.stream_process_unregister(recorder)
                 device.close()
             except Exception:
                 print('exception during close')

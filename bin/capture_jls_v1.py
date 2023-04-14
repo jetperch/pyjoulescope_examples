@@ -52,6 +52,7 @@ def run():
                 time.sleep(0.01)
         finally:
             recorder.close()
+            device.stream_process_unregister(recorder)
     return 0
 
 

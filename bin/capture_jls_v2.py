@@ -69,6 +69,7 @@ def run():
                 if t_stop and time.time() > t_stop:
                     break
             device.stop()
+            device.stream_process_unregister(p)
     return 0
 
 
