@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2019 Jetperch LLC
+# Copyright 2019-2023 Jetperch LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,7 +48,8 @@ class StreamProcess:
         length = ((samples + self.chunk_size - 1) // self.chunk_size) * self.chunk_size
         self._buffer = np.empty((length, 2), dtype=np.float32)
         self._buffer[:] = 0.0  # force python & OS to allocate the memory
-        self.idx = 0
+        self.idx = None         # the next sample index to process.
+        self.idx_offset = None  # the sample index offset, JS220 does not reset.
 
     def __str__(self):
         return 'StreamProcess'
@@ -61,14 +62,22 @@ class StreamProcess:
         # called from USB thead, keep fast!
         # long-running operations will cause sample drops
         start_id, end_id = stream_buffer.sample_id_range
-        idx_next = self.idx + self.chunk_size
-        while idx_next <= end_id and idx_next <= len(self._buffer):
-            # only get and store what we need
+        if self.idx_offset is None:
+            self.idx_offset = start_id
+            self.idx = start_id
+        while True:
+            chunk_size = min(self.chunk_size,
+                             end_id - self.idx,
+                             len(self._buffer) + self.idx_offset - self.idx)
+            if chunk_size <= 0:
+                break
+            idx_next = self.idx + chunk_size
             data = stream_buffer.samples_get(self.idx, idx_next, fields=['current', 'voltage'])
-            self._buffer[self.idx:idx_next, 0] = data['signals']['current']['value']
-            self._buffer[self.idx:idx_next, 1] = data['signals']['voltage']['value']
+            buf_start, buf_end = self.idx - self.idx_offset, idx_next - self.idx_offset
+            self._buffer[buf_start:buf_end, 0] = data['signals']['current']['value']
+            self._buffer[buf_start:buf_end, 0] = data['signals']['voltage']['value']
             self.idx = idx_next
-            idx_next += self.chunk_size
+        return (self.idx - self.idx_offset) >= len(self._buffer)
 
 
 def run():

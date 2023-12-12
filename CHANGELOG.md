@@ -4,6 +4,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.9.10
+
+2023 Dec 12
+
+* Updated bin/read_by_callback.py to handled JS220's sample index offsets.
+
+
 ## 0.9.9
 
 2023 Mar 24

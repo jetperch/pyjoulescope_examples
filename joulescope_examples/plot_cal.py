@@ -45,7 +45,7 @@ def plot_axis(axis, x, y, label=None):
 
 
 def plot_iv(data, sampling_frequency, show=None):
-    x = np.arange(len(data), dtype=np.float)
+    x = np.arange(len(data), dtype=float)
     x *= 1.0 / sampling_frequency
     f = plt.figure()
 
