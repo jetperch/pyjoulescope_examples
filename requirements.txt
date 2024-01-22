@@ -1,2 +1,3 @@
 joulescope>=0.9.7
 matplotlib
+numpy
