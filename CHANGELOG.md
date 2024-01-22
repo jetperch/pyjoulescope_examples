@@ -4,6 +4,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.10.0
+
+2024 Jan 22
+
+* Added detector example which uses pyjoulescope_driver directly.
+
+
 ## 0.9.10
 
 2023 Dec 12
