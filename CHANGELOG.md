@@ -4,6 +4,14 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.10.1
+
+2024 Feb 27
+
+* Added bin/jls_export_points.py example.
+* Added bin/statistics_v1.py example
+
+
 ## 0.10.0
 
 2024 Jan 22
