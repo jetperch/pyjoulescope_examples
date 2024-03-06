@@ -3,6 +3,15 @@
 
 This file contains the list of changes made to pyjoulescope_examples.
 
+## 0.11.0
+
+2024 Mar 6
+
+* Updated downsample_logging to directly use pyjoulescope_driver.
+  * Always use sensor-side statistics
+  * Removed JLS recording support
+  * Improved device remove / add robustness
+
 
 ## 0.10.1
 
