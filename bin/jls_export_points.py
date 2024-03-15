@@ -163,7 +163,7 @@ def on_cmd(args):
 
 
 def run():
-    parser = argparse.ArgumentParser(parser_config.__doc__)
+    parser = argparse.ArgumentParser(description=parser_config.__doc__)
     parser = parser_config(parser)
     args = parser.parse_args()
     return on_cmd(args)
