@@ -33,8 +33,6 @@ import numpy as np
 SIGNAL_MAP = _signal_name_map()
 
 
-
-
 def _on_progress(fract):
     # The MIT License (MIT)
     # Copyright (c) 2016 Vladimir Ignatev
@@ -241,6 +239,8 @@ def run():
             print(msg)
 
     with Driver() as jsdrv:
+        jsdrv.log_level = 'WARNING'
+
         verbose('Find the connected devices')
         device_paths = sorted(jsdrv.device_paths())
         if args.serial_number is not None:
