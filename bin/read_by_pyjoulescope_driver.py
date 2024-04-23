@@ -144,24 +144,33 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
             decimate_factor = value['decimate_factor']
             sample_id = value['sample_id'] // decimate_factor
             samples = value['data']
+            is_digital = (info['signal_type'] == 'u1')  # 8 bits per u8 dtype
             if 'utc_range' not in signal_state:
                 signal_state['utc_range'] = [value['utc'], value['utc']]
                 signal_state['sample_id_range'] = [sample_id, sample_id]
                 signal_state['sample_rate'] = value['sample_rate'] // decimate_factor
-                sample_count = int((duration + 1.0) * signal_state['sample_rate'] + 1_000_000)
+                sample_count = int((duration + 1.0) * signal_state['sample_rate'] + 1_000_000)  # over-allocate
                 signal_state['decimate_factor'] = decimate_factor
+                if is_digital:
+                    sample_count //= 8
                 signal_state['samples'] = np.empty(sample_count, dtype=samples.dtype)
             sample_id_expect = signal_state['sample_id_range'][-1]
             if sample_id < sample_id_expect:
                 print('Unexpected repeat: unhandled')
                 return
             elif sample_id > sample_id_expect:
-                print(f'Skip: {sample_id} > {sample_id_expect}')
-                signal_state['samples'][sample_id_expect:sample_id] = np.nan
+                print(f'Skip {device_path}.{signal_name}: {sample_id} > {sample_id_expect}')
+                if samples.dtype in [np.float32, np.float64, float]:
+                    signal_state['samples'][sample_id_expect:sample_id] = np.nan
+                elif is_digital:
+                    signal_state['samples'][sample_id_expect//8:sample_id//8] = 0
+                else:
+                    signal_state['samples'][sample_id_expect:sample_id] = 0
             sample_count = len(samples)
-            if info['signal_type'] == 'u1':
-                sample_count *= 8
             sample_id_offset = sample_id - signal_state['sample_id_range'][0]
+            if is_digital:
+                sample_id_offset //= 8
+                sample_count *= 8
             signal_state['samples'][sample_id_offset:(sample_id_offset + len(samples))] = samples
             sample_id_next = sample_id + sample_count
             signal_state['sample_id_range'][-1] = sample_id_next
