@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2020 Jetperch LLC
+# Copyright 2020-2024 Jetperch LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,38 +14,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Control power to the device under test.
-
-usage: dut_power.py [on | off]
-"""
+"""Control power to the device under test or query power status."""
 
 
-from joulescope import scan_require_one
+from pyjoulescope_driver import Driver
 import time
 import sys
 
 
-def dut_power(power_on):
+_USAGE = "usage: dut_power.py [on | off | ?]"
+
+
+def _topic(device_path):
+    if 'js110' in device_path:
+        return device_path + '/s/i/range/select'
+    else:
+        return device_path + '/s/i/range/mode'
+
+
+def dut_power_set(jsdrv, device_path, power_on):
     i_range = 'auto' if power_on else 'off'
-    # do not use config='auto' so that power can remain off without a glitch.
-    with scan_require_one(name='Joulescope') as js:
-        js.parameter_set('sensor_power', 'on')
-        js.parameter_set('i_range', i_range)
+    jsdrv.publish(_topic(device_path), i_range)
+
+
+def dut_power_query(jsdrv, device_path):
+    return 'off' if (0 == jsdrv.query(_topic(device_path))) else 'on'
 
 
 def run():
-    power_on = True
-    if len(sys.argv) > 1:
-        power_on_str = sys.argv[1].lower()
-        if power_on_str in ['1', 'on', 'true', 'enable']:
-            power_on = True
-        elif power_on_str in ['0', 'off', 'false', 'disable']:
-            power_on = False
-        else:
-            print('usage: dut_power.py [on | off]')
-            return
-    dut_power(power_on)
+    if len(sys.argv) != 2:
+        print(_USAGE)
+    arg = sys.argv[1].lower()
+    with Driver() as jsdrv:
+        for device_path in sorted(jsdrv.device_paths()):
+            jsdrv.open(device_path, mode='restore')
+            if arg in ['1', 'on', 'true', 'enable']:
+                dut_power_set(jsdrv, device_path, True)
+            elif arg in ['0', 'off', 'false', 'disable']:
+                dut_power_set(jsdrv, device_path, False)
+            elif arg in ['?']:
+                print(f'{device_path}: {dut_power_query(jsdrv, device_path)}')
+            else:
+                print(_USAGE)
+                return 1
+            jsdrv.close(device_path)
+    return 0
 
 
 if __name__ == '__main__':
-    run()
+    sys.exit(run())
