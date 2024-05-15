@@ -87,6 +87,13 @@ def on_cmd(args):
         signals[(str(signal.signal_id), )] = signal
         signals[(signal.name, )] = signal
     for column in args.columns.split(','):
+        if column == 'time':
+            columns.append({
+                'name': 'time',
+                't_start': 0,
+                't_end': 0x7fff_ffff_ffff_ffff,
+            })
+            continue
         parts = column.split('.')
         signal = signals[tuple(parts)]
         if len(sources) > 2:
@@ -141,6 +148,9 @@ def on_cmd(args):
     data = np.empty((args.count, len(columns)))
     ratio = args.ratio
     for col_idx, column in enumerate(columns):
+        if column['name'] == 'time':
+            data[:, col_idx] = np.linspace(0, t64_duration, args.count + 1)[:-1] * (1 / time64.SECOND)
+            continue
         signal = column['signal']
         signal_id = signal.signal_id
         s_start = r.timestamp_to_sample_id(signal_id, t64_start)
@@ -155,10 +165,10 @@ def on_cmd(args):
 
     # Save to CSV file
     if args.no_header:
-        np.savetxt(args.output, data)
+        np.savetxt(args.output, data, delimiter=',')
     else:
         header = ','.join([column['name'] for column in columns])
-        np.savetxt(args.output, data, header=header)
+        np.savetxt(args.output, data, header=header, delimiter=',')
     return 0
 
 
