@@ -3,6 +3,14 @@
 
 This file contains the list of changes made to pyjoulescope_examples.
 
+
+## 0.12.0
+
+2024 Jun 11
+
+* Added bin/gpi_region.py.
+
+
 ## 0.11.0
 
 2024 Mar 6
