@@ -4,6 +4,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.13.0
+
+2024 Jun 14
+
+* Added bin/measure.py.
+
+
 ## 0.12.0
 
 2024 Jun 11

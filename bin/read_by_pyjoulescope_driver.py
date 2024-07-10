@@ -76,6 +76,9 @@ def get_parser():
                    help='The capture duration in float seconds. '
                         + 'Add a suffix for other units: s=seconds, m=minutes, h=hours, d=days. '
                         + 'The available RAM limits the duration.')
+    p.add_argument('--frequency', '-f',
+                   type=int,
+                   help='The sampling frequency in Hz.')
     p.add_argument('--serial_number',
                    help='The serial number of the Joulescope for this capture.')
     p.add_argument('--open', '-o',
@@ -171,7 +174,15 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
             if is_digital:
                 sample_id_offset //= 8
                 sample_count *= 8
-            signal_state['samples'][sample_id_offset:(sample_id_offset + len(samples))] = samples
+            if sample_id_offset < len(signal_state['samples']):
+                e = sample_id_offset + len(samples)
+                if e > len(signal_state['samples']):
+                    # should not happen since we overallocate the sample buffer
+                    signal_state['samples'][sample_id_offset:e] = \
+                        samples[:(len(signal_state['samples']) - sample_id_offset)]
+                else:
+                    signal_state['samples'][sample_id_offset:e] = samples
+
             sample_id_next = sample_id + sample_count
             signal_state['sample_id_range'][-1] = sample_id_next
             signal_state['utc_range'][-1] = (value['utc'] +
@@ -276,6 +287,8 @@ def run():
                     print(f'Unsupported device {device_path}: ignore')
                     jsdrv.close(device_path)
                     continue
+            if args.frequency is not None:
+                jsdrv.publish(f'{device_path}/h/fs', int(args.frequency))
             signals_full.extend([(device_path, signal) for signal in signals])
             device_paths_success.append(device_path)
         device_paths = device_paths_success
