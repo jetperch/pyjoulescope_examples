@@ -79,6 +79,7 @@ def run():
         device.parameter_set('i_range', 'auto')
         device.parameter_set('v_range', '15V')
         s.wait_for_done()
+        device.parameter_set('i_range', 'off')
     except KeyboardInterrupt:
         print('Interrupted by user')
     finally:

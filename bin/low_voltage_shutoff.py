@@ -59,11 +59,14 @@ def run():
 
     # Perform the data capture
     with device:
-        device.statistics_callback = on_statistics
-        device.start(stop_fn=on_stop)
-        while not _quit:
-            time.sleep(0.1)
-        device.stop()  # for CTRL-C handling (safe for duplicate calls)
+        try:
+            device.statistics_callback = on_statistics
+            device.start(stop_fn=on_stop)
+            while not _quit:
+                time.sleep(0.1)
+        finally:
+            device.parameter_set('i_range', 'off')
+            device.stop()  # for CTRL-C handling (safe for duplicate calls)
     return 0
 
 
