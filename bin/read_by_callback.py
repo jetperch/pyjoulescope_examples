@@ -75,7 +75,7 @@ class StreamProcess:
             data = stream_buffer.samples_get(self.idx, idx_next, fields=['current', 'voltage'])
             buf_start, buf_end = self.idx - self.idx_offset, idx_next - self.idx_offset
             self._buffer[buf_start:buf_end, 0] = data['signals']['current']['value']
-            self._buffer[buf_start:buf_end, 0] = data['signals']['voltage']['value']
+            self._buffer[buf_start:buf_end, 1] = data['signals']['voltage']['value']
             self.idx = idx_next
         return (self.idx - self.idx_offset) >= len(self._buffer)
 

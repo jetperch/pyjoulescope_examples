@@ -20,6 +20,13 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 0.14.1
+
+2025 Feb 4
+
+* Fixed read_by_callback.py  #17
+
+
 ## 0.14.0
 
 2025 Jan 2
