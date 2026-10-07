@@ -25,7 +25,7 @@ PNG = b'\x89PNG\r\n\x1a\n'
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
-    for option in ['infile', '--verbose', '-v', '--sample_count', '--out', '--show']:
+    for option in ['infile', '--verbose', '-v', '--sample-count', '--out', '--show']:
         assert option in r.stdout
 
 
@@ -55,8 +55,9 @@ def test_verbose(path, jls_v2, tmp_path):
         ]
 
 
-def test_out(path, jls_v2, tmp_path):
-    r = harness.run(path, jls_v2, '--out', 'e.png', '-v', '--sample_count', 1000, cwd=tmp_path)
+@pytest.mark.parametrize('option', ['--sample-count', '--sample_count'])
+def test_out(path, jls_v2, tmp_path, option):
+    r = harness.run(path, jls_v2, '--out', 'e.png', '-v', option, 1000, cwd=tmp_path)
     assert r.returncode == 0, r
     assert r.lines == [
         f'Opening JLS file {jls_v2}',
