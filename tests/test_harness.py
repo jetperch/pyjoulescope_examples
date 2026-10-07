@@ -143,6 +143,22 @@ def test_visible_selects_device(tmp_path, device_path):
     assert r.lines == [f"['{device_path}']", f"['{device_path}']"]
 
 
+def test_hotplug(tmp_path, device_path):
+    code = ('import time\nfrom pyjoulescope_driver import Driver\n'
+            'with Driver() as d:\n'
+            '    print("list", d.device_paths(), flush=True)\n'
+            '    w = d.device_watch(lambda p: print("add", p, flush=True),\n'
+            '                       lambda p: print("remove", p, flush=True))\n'
+            '    d.subscribe("@/!remove", "pub", lambda t, v: print("topic", t, v, flush=True))\n'
+            '    time.sleep(3.5)\n'
+            '    print("list", d.device_paths(), flush=True)\n'
+            '    w.unsubscribe()\n')
+    r = harness.run(_script(tmp_path, code), visible=device_path, hotplug='add@1.5,remove@2.5')
+    assert r.returncode == 0, r
+    assert r.lines == ['list []', f'add {device_path}', f'remove {device_path}',
+                       f'topic @/!remove {device_path}', 'list []']
+
+
 def test_jls_v2(jls_v2):
     from pyjls import Reader
     with Reader(str(jls_v2)) as r:

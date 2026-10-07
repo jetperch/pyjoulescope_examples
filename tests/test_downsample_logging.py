@@ -105,6 +105,25 @@ def test_no_device_waits(path, documents):
         assert event in txt, event
 
 
+def test_hotplug(path, documents, device_path):
+    # Start with no instrument, then plug, unplug and plug it again.
+    env, log_dir = documents
+    r = harness.run(path, '--time-format', 'relative', env=env, visible=device_path,
+                    hotplug='add@3,remove@6,add@8', interrupt_after=11)
+    assert r.interrupted and not r.killed, r
+    assert r.returncode == 0, r
+    assert r.lines[1] == 'Found no Joulescopes'
+    txt, csv = _logs(log_dir)[0]
+    events = [x.split(' ', 1)[1] for x in txt.splitlines() if ' DEVICE' in x]
+    assert events == ['DEVICES : ', f'DEVICE : OPEN {device_path}', f'DEVICE : CLOSE {device_path}',
+                      f'DEVICE : OPEN {device_path}', f'DEVICE : CLOSE {device_path}']
+    assert len(csv) == 1  # both connections log to the same file
+    t = [float(row.split(',')[0]) for row in _rows(csv[0])]
+    gaps = [b - a for a, b in zip(t[:-1], t[1:])]
+    assert max(gaps) > 1.5, t  # unplugged from 6 to 8 seconds
+    assert len(t) >= 6, t
+
+
 def test_device(path, documents, device_path):
     name = f'{device_path.model}_{device_path.serial_number}'
     r = _run(path, documents, device_path=device_path)

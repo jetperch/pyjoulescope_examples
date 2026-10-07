@@ -34,6 +34,7 @@ TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 REPO_PATH = os.path.dirname(TESTS_PATH)
 SHIM_PATH = os.path.join(TESTS_PATH, 'shim')
 ENV_VISIBLE = 'JOULESCOPE_EXAMPLES_VISIBLE'
+ENV_HOTPLUG = 'JOULESCOPE_EXAMPLES_HOTPLUG'
 ENV_BENCH = 'JOULESCOPE_EXAMPLES_BENCH'
 ENV_EXCLUDE = 'JOULESCOPE_EXAMPLES_EXCLUDE'
 INTERRUPT_GRACE = 10.0  # seconds from Ctrl-C to kill
@@ -112,16 +113,19 @@ class Result:
         ])
 
 
-def environ(visible=None, env=None):
+def environ(visible=None, env=None, hotplug=None):
     """The environment for an example.
 
     :param visible: The device specification for the devices the example
         may see.  '' (default) hides every device.  None does not limit
         the devices.
     :param env: Additional environment variables.
+    :param hotplug: The simulated hotplug events for the visible devices,
+        such as "add@2,remove@5".  See tests/shim/sitecustomize.py.
     """
     e = dict(os.environ)
     e.pop(ENV_VISIBLE, None)
+    e.pop(ENV_HOTPLUG, None)
     e['PYTHONUNBUFFERED'] = '1'
     e['PYTHONIOENCODING'] = 'utf-8'
     e['PYTHONDONTWRITEBYTECODE'] = '1'
@@ -131,6 +135,8 @@ def environ(visible=None, env=None):
         e.update(env)
     if visible is not None:
         e[ENV_VISIBLE] = visible
+        if hotplug:
+            e[ENV_HOTPLUG] = hotplug
         e['PYTHONPATH'] = os.pathsep.join([SHIM_PATH] + [p for p in [e.get('PYTHONPATH')] if p])
     return e
 
@@ -162,7 +168,7 @@ def _interrupt(process):
 
 
 def run(path, *args, cwd=None, timeout=60.0, interrupt_after=None, interrupt_on=None,
-        visible='', env=None, stdin=None):
+        visible='', env=None, stdin=None, hotplug=None):
     """Run an example as a subprocess.
 
     :param path: The example path, relative to the repository.
@@ -179,6 +185,8 @@ def run(path, *args, cwd=None, timeout=60.0, interrupt_after=None, interrupt_on=
     :param env: Additional environment variables.
     :param stdin: The text for stdin.  None (default) provides an empty
         stdin, so a prompt reads end-of-file rather than blocking.
+    :param hotplug: The simulated hotplug events for the visible devices,
+        such as "add@2,remove@5".  See tests/shim/sitecustomize.py.
     :return: The :class:`Result`.
     """
     args = [str(a) for a in args]
@@ -201,7 +209,7 @@ def run(path, *args, cwd=None, timeout=60.0, interrupt_after=None, interrupt_on=
         interrupt_on = lambda out: text in out
 
     t_start = time.monotonic()
-    p = subprocess.Popen(cmd, cwd=REPO_PATH if cwd is None else cwd, env=environ(visible, env),
+    p = subprocess.Popen(cmd, cwd=REPO_PATH if cwd is None else cwd, env=environ(visible, env, hotplug),
                          stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          **kwargs)
     stdout, stderr = [], []

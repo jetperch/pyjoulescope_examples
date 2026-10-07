@@ -34,7 +34,7 @@ in.
 | ------- | ------------------ | ------------------ |
 | `energy_printer_host.py` | exits | n/a |
 | `downsample_logging.py` | keeps running, logs `DEVICE : CLOSE` | resumes logging to the same CSV file, logs `DEVICE : OPEN` |
-| `downsample_logging.py`, started with no instrument | keeps waiting | starts logging |
+| `downsample_logging.py`, started with no instrument | keeps waiting | starts logging (also simulated in the tests) |
 | `capture_jls_v2.py`, `capture_all.py` | exits, the JLS file is readable | n/a |
 
 

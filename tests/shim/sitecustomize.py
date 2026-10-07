@@ -27,14 +27,24 @@ tests show the behavior with no instrument attached while one is attached,
 and keeps an example that uses every device away from bench devices that
 are not under test.
 
+When JOULESCOPE_EXAMPLES_HOTPLUG is also set, such as "add@2,remove@5",
+the visible devices appear and disappear at those times in seconds after
+startup.  The shim reports each change to "@/!add" and "@/!remove"
+subscribers, the same as the driver does for a USB hotplug.  It does not
+stop the device, so a stream continues, unlike a real unplug.  The
+visible specification must list full device paths.
+
 When JOULESCOPE_EXAMPLES_DOCUMENTS is set, it also stands in for the
 user's Documents folder, so that examples that write there, such as
 downsample_logging.py, never touch the real one.
 """
 
 import os
+import threading
+import time
 
 _SPEC = os.environ.get('JOULESCOPE_EXAMPLES_VISIBLE')
+_HOTPLUG = os.environ.get('JOULESCOPE_EXAMPLES_HOTPLUG')
 _DOCUMENTS = os.environ.get('JOULESCOPE_EXAMPLES_DOCUMENTS')
 
 
@@ -53,21 +63,31 @@ def _documents_install(path):
     shell.SHGetFolderPath = fn
 
 
-def _install(spec):
+def _install(spec, hotplug=None):
     import pyjoulescope_driver
     from pyjoulescope_driver import DevicePath, device_filter
 
+    events = []  # (time, 'add' or 'remove')
+    for item in (hotplug or '').split(','):
+        if item.strip():
+            kind, t = item.strip().split('@')
+            events.append((float(t), kind))
+    present = [not events or events[0][1] != 'add']
+    wrappers = []  # every _Filtered instance, for the simulated hotplug events
+
     def visible(device_path):
-        return bool(spec) and bool(device_filter.find([DevicePath(device_path)], spec))
+        return present[0] and bool(spec) and bool(device_filter.find([DevicePath(device_path)], spec))
 
     class _Filtered:
         """A device add or remove callback that only sees visible devices."""
 
-        def __init__(self, fn):
+        def __init__(self, topic, fn):
+            self.topic = topic
             self.fn = fn
+            self.active = True
 
         def __call__(self, topic, value):
-            if visible(value):
+            if self.active and visible(value):
                 self.fn(topic, value)
 
         def __eq__(self, other):
@@ -88,13 +108,39 @@ def _install(spec):
 
         def subscribe(self, topic, flags, fn, timeout=None):
             if topic in ['@/!add', '@/!remove']:
-                fn = _Filtered(fn)
+                fn = _Filtered(topic, fn)
+                wrappers.append(fn)
             return super().subscribe(topic, flags, fn, timeout)
 
+        def unsubscribe(self, topic, fn, timeout=None):
+            for w in wrappers:
+                if w.topic == topic and (w is fn or w.fn is fn or w.fn == fn):
+                    w.active = False
+            return super().unsubscribe(topic, fn, timeout)
+
+        def finalize(self, timeout=None):
+            for w in wrappers:
+                w.active = False
+            return super().finalize(timeout)
+
+    def hotplug_run():
+        t_start = time.monotonic()
+        device_paths = [p.strip() for p in spec.split(',') if p.strip()]
+        for t, kind in events:
+            time.sleep(max(0.0, t_start + t - time.monotonic()))
+            present[0] = (kind == 'add')
+            topic = f'@/!{kind}'
+            for w in list(wrappers):
+                if w.topic == topic and w.active:
+                    for device_path in device_paths:
+                        w.fn(topic, device_path)
+
     pyjoulescope_driver.Driver = Driver
+    if events:
+        threading.Thread(target=hotplug_run, name='shim_hotplug', daemon=True).start()
 
 
 if _SPEC is not None:
-    _install(_SPEC.strip())
+    _install(_SPEC.strip(), _HOTPLUG)
 if _DOCUMENTS:
     _documents_install(_DOCUMENTS)
