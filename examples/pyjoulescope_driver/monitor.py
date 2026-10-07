@@ -140,7 +140,7 @@ class Monitor:
         # print(value)
         utc = value['time']['utc']['value'][0]
         i_avg = value['signals']['current']['avg']['value']
-        v_avg = value['signals']['current']['avg']['value']
+        v_avg = value['signals']['voltage']['avg']['value']
         self._stat_buffer.append((utc, i_avg, v_avg))
         self._stat_buffer = self._stat_buffer[-self._summary_fs:]
         # print(f'{i_avg} {v_avg}')

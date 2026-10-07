@@ -76,7 +76,6 @@ def test_capture(path, device_path, tmp_path):
     assert len(rows) > 50
 
 
-@pytest.mark.xfail(strict=True, reason='6.1 writes current into every voltage column')
 def test_capture_voltage(path, device_path, tmp_path):
     import openpyxl
     _capture(path, device_path, tmp_path)

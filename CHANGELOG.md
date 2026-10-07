@@ -57,6 +57,7 @@ Breaking changes:
 
 Fixes:
 
+* monitor.py: write voltage in the voltage columns (was current).
 * timesync.py: exit cleanly after skipping an unsupported instrument (was
   RuntimeError on exit).
 * trigger_out.py (was trigger_host_pyjoulescope_driver.py): detect on the
