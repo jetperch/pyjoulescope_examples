@@ -26,11 +26,31 @@ runs unmodified, against the real driver, with real devices.  It lets the
 tests show the behavior with no instrument attached while one is attached,
 and keeps an example that uses every device away from bench devices that
 are not under test.
+
+When JOULESCOPE_EXAMPLES_DOCUMENTS is set, it also stands in for the
+user's Documents folder, so that examples that write there, such as
+downsample_logging.py, never touch the real one.
 """
 
 import os
 
 _SPEC = os.environ.get('JOULESCOPE_EXAMPLES_VISIBLE')
+_DOCUMENTS = os.environ.get('JOULESCOPE_EXAMPLES_DOCUMENTS')
+
+
+def _documents_install(path):
+    try:
+        from win32com.shell import shell, shellcon
+    except ImportError:
+        return  # examples fall back to ~/Documents, so the tests set HOME
+    get_folder_path = shell.SHGetFolderPath
+
+    def fn(hwnd, csidl, token, flags):
+        if csidl == shellcon.CSIDL_PERSONAL:
+            return path
+        return get_folder_path(hwnd, csidl, token, flags)
+
+    shell.SHGetFolderPath = fn
 
 
 def _install(spec):
@@ -76,3 +96,5 @@ def _install(spec):
 
 if _SPEC is not None:
     _install(_SPEC.strip())
+if _DOCUMENTS:
+    _documents_install(_DOCUMENTS)

@@ -312,6 +312,18 @@ repository root either, since Python puts `bin/`, not the working
 directory, on `sys.path`.  This extends 6.17: they only run with the
 repository on `PYTHONPATH`.
 
+6.28. `read_by_pyjoulescope_driver.py` waits forever for a signal that the
+instrument does not have, such as `--signals T` on a JS110, and after it
+skips every instrument as unsupported.
+
+6.29. `timesync.py` raises on exit after it skips an unsupported instrument,
+because it closes every device, including those it never opened.
+
+No black-box test can show 6.10 (`battery_discharge.py` releasing its lock
+twice): the example stops after the first reading below the threshold, before
+a second can arrive.  Per 2.7 it is not fixed on its own; the refactor
+removes the lock.
+
 Upstream defects that the examples expose.  Fix them upstream, not in the
 examples; the example tests mark them `xfail` with these numbers.
 
@@ -327,6 +339,12 @@ stderr when it opens a JS320, now that the native log level defaults to
 U.3. pyjoulescope_driver 2.5.0 prints `pkt_index skip: expected 0, received
 8448` to stderr when a JS110 starts streaming, for example in
 `current_ranging_filter.py`.
+
+U.4. pyjoulescope_driver 2.5.0 intermittently crashes with an access
+violation (0xC0000005) while finalizing.  Seen twice on Windows: `monitor.py`
+on a JS110 after Ctrl-C (1 of 14 runs), and a test process that created a
+second `Driver` to reopen an instrument (1 of 31 runs).  Not yet
+reproducible on demand.
 
 
 ## 7. Regression checklist
