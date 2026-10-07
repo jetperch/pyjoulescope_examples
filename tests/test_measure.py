@@ -38,7 +38,7 @@ def _check(r, duration):
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
-    for option in ['--duration', '--frequency', '--serial-number']:
+    for option in ['--duration', '--frequency', '--device', '-d']:
         assert option in r.stdout
 
 
@@ -52,7 +52,7 @@ def test_invalid(path, args):
 def test_no_device(path):
     r = harness.run(path, '--duration', 1)
     assert r.returncode == 1, r
-    assert r.lines == ['Device not found']
+    assert r.lines == ['No Joulescope found']
 
 
 def test_duration(path, device_path, request):
@@ -77,20 +77,27 @@ def test_ctrl_c(path, device_path, request):
     _check(r, 2.0)
 
 
-def test_serial_number(path, device_path):
-    r = harness.run(path, '--duration', 0.5, '--serial-number', 'ZZZZ', visible=device_path)
+@pytest.mark.parametrize('option', ['--device', '-d', '--serial-number', '--serial_number'])
+def test_device_unknown(path, device_path, option):
+    r = harness.run(path, '--duration', 0.5, option, 'ZZZZ', visible=device_path)
     assert r.returncode == 1, r
-    assert r.lines == ['Device not found']
-    r = harness.run(path, '--duration', 0.5, '--serial-number', device_path.serial_number.lower(),
-                    visible=device_path)
-    assert r.returncode == 0, r
+    assert r.lines == [f'Device "ZZZZ" not found in [{device_path!r}]']
+
+
+@pytest.mark.parametrize('option', ['--device', '-d', '--serial-number', '--serial_number'])
+def test_device_spec(path, device_path, option, request):
+    if device_path.model == 'js320':
+        request.applymarker(pytest.mark.xfail(strict=True, reason='6.13 no JS320 model branch'))
+    for spec in [device_path.serial_number.lower(), device_path.model]:
+        r = harness.run(path, '--duration', 0.5, option, spec, visible=device_path)
+        _check(r, 0.5)
 
 
 def test_several_devices(path, several_devices):
     r = harness.run(path, '--duration', 0.5, visible=several_devices)
     assert r.returncode == 1, r
-    assert r.lines[0].startswith('Found multiple devices: [')
-    assert r.lines[1] == 'Use "--serial-number" to specify the target Joulescope'
+    assert r.lines[0].startswith('Multiple Joulescopes found: [')
+    assert r.lines[1] == 'Use "--device" to specify the desired device.'
     serial_number = several_devices.split(',')[0].split('/')[-1]
-    r = harness.run(path, '--duration', 0.5, '--serial-number', serial_number, visible=several_devices)
+    r = harness.run(path, '--duration', 0.5, '--device', serial_number, visible=several_devices)
     assert r.returncode == 0, r

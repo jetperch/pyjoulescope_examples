@@ -20,7 +20,7 @@
 Press Ctrl+C to stop or specify "--duration" on the command line.
 """
 
-from pyjoulescope_driver import Driver
+from pyjoulescope_driver import Driver, device_filter
 import argparse
 import json
 import numpy as np
@@ -103,8 +103,9 @@ def get_parser():
                    type=int,
                    default=100,
                    help='The internal statistics frequency.')
-    p.add_argument('--serial-number',
-                   help='The serial number of the Joulescope to use.')
+    p.add_argument('--device', '-d',
+                   help='The Joulescope to use, such as "js220", "000415" or "js220-000415".')
+    p.add_argument('--serial-number', '--serial_number', dest='device', help=argparse.SUPPRESS)
     return p
 
 
@@ -113,53 +114,45 @@ def run(args=None):
     args = parser.parse_args(args=args)
 
     with Driver() as jsdrv:
-        # Find and open the first Joulescope
-        device_paths = sorted(jsdrv.device_paths())
-        if args.serial_number is not None:
-            serial_number_suffix = '/' + args.serial_number.lower()
-            device_paths = [p for p in device_paths if p.lower().endswith(serial_number_suffix)]
-        if len(device_paths) == 0:
-            print('Device not found')
-            return 1
-        if len(device_paths) > 1:
-            print(f'Found multiple devices: {device_paths}')
-            print('Use "--serial-number" to specify the target Joulescope')
-            return 1
-
-        device_path = device_paths[0]
-        jsdrv.open(device_path)
-
-        # Configure the instrument
-        measure = Measure()
-        if 'js110' in device_path:
-            jsdrv.publish(f'{device_path}/s/i/range/select', 'auto')
-            jsdrv.publish(f'{device_path}/s/v/range/select', '15 V')
-            # use host-side statistics
-            jsdrv.publish(device_path + '/s/i/ctrl', 'on')
-            jsdrv.publish(device_path + '/s/v/ctrl', 'on')
-            jsdrv.publish(device_path + '/s/p/ctrl', 'on')
-            scnt = int(round(2_000_000 / args.frequency))
-            jsdrv.publish(device_path + '/s/stats/scnt', scnt)
-            jsdrv.publish(device_path + '/s/stats/ctrl', 'on')
-            jsdrv.subscribe(device_path + '/s/stats/value', 'pub', measure.on_statistics)            
-        elif 'js220' in device_path:
-            jsdrv.publish(f'{device_path}/s/i/range/mode', 'auto')
-            jsdrv.publish(f'{device_path}/s/v/range/mode', 'auto')
-            # JS220, always sensor-side statistics
-            scnt = int(round(1_000_000 / args.frequency))
-            jsdrv.publish(device_path + '/s/stats/scnt', scnt)
-            jsdrv.publish(device_path + '/s/stats/ctrl', 1)
-            jsdrv.subscribe(device_path + '/s/stats/value', 'pub', measure.on_statistics)            
-
-        measure.start()
-        
-        # replace this sleep and try/except with whatever your code needs to do
         try:
-            time.sleep(args.duration)
-        except KeyboardInterrupt:
-            pass  # or use Ctrl-C
+            device_path = jsdrv.find_one_device(args.device, brand='joulescope')
+        except device_filter.DeviceFilterError as ex:
+            print(ex)
+            if len(ex.matches) > 1:
+                print('Use "--device" to specify the desired device.')
+            return 1
 
-        statistics = measure.stop()
+        measure = Measure()
+        with jsdrv.open(device_path) as device:  # topics are relative to device_path
+            if device_path.model == 'js110':
+                device.publish('s/i/range/select', 'auto')
+                device.publish('s/v/range/select', '15 V')
+                # use host-side statistics
+                device.publish('s/i/ctrl', 'on')
+                device.publish('s/v/ctrl', 'on')
+                device.publish('s/p/ctrl', 'on')
+                scnt = int(round(2_000_000 / args.frequency))
+                device.publish('s/stats/scnt', scnt)
+                device.publish('s/stats/ctrl', 'on')
+                device.subscribe('s/stats/value', 'pub', measure.on_statistics)
+            elif device_path.model == 'js220':
+                device.publish('s/i/range/mode', 'auto')
+                device.publish('s/v/range/mode', 'auto')
+                # JS220, always sensor-side statistics
+                scnt = int(round(1_000_000 / args.frequency))
+                device.publish('s/stats/scnt', scnt)
+                device.publish('s/stats/ctrl', 1)
+                device.subscribe('s/stats/value', 'pub', measure.on_statistics)
+
+            measure.start()
+
+            # replace this sleep and try/except with whatever your code needs to do
+            try:
+                time.sleep(args.duration)
+            except KeyboardInterrupt:
+                pass  # or use Ctrl-C
+
+            statistics = measure.stop()
         # display statistics in a friendly format
         print(json.dumps(statistics, indent=2))
     return 0
