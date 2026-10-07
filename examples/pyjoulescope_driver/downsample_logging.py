@@ -385,7 +385,7 @@ class LoggerDevice:
                         continue
                     last_line = line.strip().split(',')
                     self._last = tuple([last_line[0]] + [float(x) for x in last_line[1:]])
-                    self._offset = [self._last[-2], self._last[-1]]
+                    self._offset = [self._last[4], self._last[5]]  # charge, energy
                     break
         self._f_csv = open(fname, 'at+')
         d = parent.driver

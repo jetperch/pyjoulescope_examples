@@ -199,8 +199,6 @@ def test_duration(path, documents, device_path, request):
     assert 2 <= len(rows) <= 6, rows
 
 
-@pytest.mark.xfail(strict=True, reason='6.4 --resume restores charge and energy from the current '
-                                       'min and max columns')
 def test_resume(path, documents, device_path):
     if device_path.model == 'js320':
         pytest.skip(NO_JS320)
@@ -215,4 +213,5 @@ def test_resume(path, documents, device_path):
     assert 'LOGGER : RESUME' in txt
     rows = [row.split(',') for row in _rows(csv[0])]
     assert len(rows) > k
-    assert rows[k][4:6] == rows[k - 1][4:6]  # charge, energy continue
+    # charge and energy continue, with the precision written to the CSV file
+    assert [float(x) for x in rows[k][4:6]] == pytest.approx([float(x) for x in rows[k - 1][4:6]])
