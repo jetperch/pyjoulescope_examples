@@ -41,6 +41,8 @@ Fixes:
   ZeroDivisionError).
 * jls_export_points.py: report an exceeded `--duration` in seconds (was
   time64 ticks).
+* statistics.py: display statistics at 2 Hz on a JS220, rather than at
+  the rate that a previous program left.
 
 Other changes:
 

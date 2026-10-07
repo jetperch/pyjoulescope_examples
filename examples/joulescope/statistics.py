@@ -62,11 +62,12 @@ def run():
     devices = scan(config='off')
     try:
         for device in devices:
-            cbk = statistics_callback_factory(device, statistics_queue)
-            device.statistics_callback_register(cbk)
             device.open()
+            device.parameter_set('reduction_frequency', '2 Hz')
             device.parameter_set('i_range', 'auto')
             device.parameter_set('v_range', '15V')
+            cbk = statistics_callback_factory(device, statistics_queue)
+            device.statistics_callback_register(cbk)
         while not _quit:
             try:
                 statistics_callback(*statistics_queue.get(timeout=0.1))

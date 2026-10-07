@@ -68,9 +68,7 @@ def test_device_2hz(path, device_path, request):
     assert times[:4] == [0.0, 0.5, 1.0, 1.5]
 
 
-def test_statistics_rate(path, statistics_100hz, request):
-    if statistics_100hz.model == 'js220':
-        request.applymarker(pytest.mark.xfail(strict=True, reason=harness.STATS_RATE))
+def test_statistics_rate(path, statistics_100hz):
     r = harness.run(path, visible=statistics_100hz, interrupt_after=2.5)
     assert 2 <= len(_parse(r)) <= 7, r  # 2 Hz
 
