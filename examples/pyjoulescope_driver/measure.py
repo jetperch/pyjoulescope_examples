@@ -135,10 +135,10 @@ def run(args=None):
                 device.publish('s/stats/scnt', scnt)
                 device.publish('s/stats/ctrl', 'on')
                 device.subscribe('s/stats/value', 'pub', measure.on_statistics)
-            elif device_path.model == 'js220':
+            else:
                 device.publish('s/i/range/mode', 'auto')
                 device.publish('s/v/range/mode', 'auto')
-                # JS220, always sensor-side statistics
+                # The JS220 and JS320 compute statistics on the instrument
                 scnt = int(round(1_000_000 / args.frequency))
                 device.publish('s/stats/scnt', scnt)
                 device.publish('s/stats/ctrl', 1)

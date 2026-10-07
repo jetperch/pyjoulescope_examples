@@ -55,23 +55,17 @@ def test_no_device(path):
     assert r.lines == ['No Joulescope found']
 
 
-def test_duration(path, device_path, request):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason='6.13 no JS320 model branch'))
+def test_duration(path, device_path):
     r = harness.run(path, '--duration', 1, visible=device_path)
     _check(r, 1.0)
 
 
-def test_frequency(path, device_path, request):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason='6.13 no JS320 model branch'))
+def test_frequency(path, device_path):
     r = harness.run(path, '--duration', 1, '--frequency', 10, visible=device_path)
     _check(r, 1.0)
 
 
-def test_ctrl_c(path, device_path, request):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason='6.13 no JS320 model branch'))
+def test_ctrl_c(path, device_path):
     r = harness.run(path, visible=device_path, interrupt_after=2)
     assert r.interrupted and not r.killed, r
     _check(r, 2.0)
@@ -85,9 +79,7 @@ def test_device_unknown(path, device_path, option):
 
 
 @pytest.mark.parametrize('option', ['--device', '-d', '--serial-number', '--serial_number'])
-def test_device_spec(path, device_path, option, request):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason='6.13 no JS320 model branch'))
+def test_device_spec(path, device_path, option):
     for spec in [device_path.serial_number.lower(), device_path.model]:
         r = harness.run(path, '--duration', 0.5, option, spec, visible=device_path)
         _check(r, 0.5)

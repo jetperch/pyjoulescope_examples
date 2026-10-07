@@ -79,6 +79,7 @@ Fixes:
 
 Other changes:
 
+* Added JS320 support: measure.py.
 * capture_jls.py (was capture_jls_v2.py) records at least `--duration`
   of samples, counted by the instrument, and exits when the instrument
   stops, such as when unplugged.  It previously used a wall-clock timer,
