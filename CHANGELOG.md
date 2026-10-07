@@ -50,6 +50,8 @@ Breaking changes:
 
 Fixes:
 
+* dut_power.py: exit 1 after the usage message when given no argument
+  (was IndexError).
 * read.py: exit 1 with the error when the instrument does not have a
   requested signal, such as `--signals T` on a JS110.  It waited forever.
 * statistics_v1.py and capture_jls_v1.py: exit 1 after an error (was 0).

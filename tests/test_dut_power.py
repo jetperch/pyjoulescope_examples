@@ -28,7 +28,6 @@ def test_no_args_usage(path):
     assert r.lines[0] == USAGE
 
 
-@pytest.mark.xfail(strict=True, reason='6.16 raises IndexError when given no argument')
 def test_no_args(path):
     r = harness.run(path)
     assert r.returncode != 0, r

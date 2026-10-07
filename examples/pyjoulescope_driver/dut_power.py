@@ -44,6 +44,7 @@ def dut_power_query(jsdrv, device_path):
 def run():
     if len(sys.argv) != 2:
         print(_USAGE)
+        return 1
     arg = sys.argv[1].lower()
     with Driver() as jsdrv:
         for device_path in sorted(jsdrv.device_paths()):
