@@ -296,6 +296,22 @@ Found during characterization (4.2) of the second attempt:
 ticks labeled as seconds, such as `Duration exceeded: 5368709120.0 >
 2147472910.0`.
 
+6.24. `accumulators.py --source sensor` ignores `--duration`, and Ctrl-C
+ends it with a `KeyboardInterrupt` traceback and without the final summary.
+
+6.25. Some examples exit 0 after an error, because `__main__` calls `run()`
+without `sys.exit()`: `battery_discharge.py` and `statistics_v1.py` with no
+instrument, and `capture_jls_v1.py` after its usage message.
+
+6.26. `capture_all.py --frequency 1000` records nothing: the JLS v1
+`DataRecorder` raises "stream_buffer length too small" in the stream
+callback, and the example still exits 0.
+
+6.27. `read_by_method.py` and `read_by_callback.py` do not run from the
+repository root either, since Python puts `bin/`, not the working
+directory, on `sys.path`.  This extends 6.17: they only run with the
+repository on `PYTHONPATH`.
+
 Upstream defects that the examples expose.  Fix them upstream, not in the
 examples; the example tests mark them `xfail` with these numbers.
 
@@ -307,6 +323,10 @@ and JS220.
 U.2. pyjoulescope_driver 2.5.0 prints `in frame_id mismatch 0 != 1` to
 stderr when it opens a JS320, now that the native log level defaults to
 `error`.
+
+U.3. pyjoulescope_driver 2.5.0 prints `pkt_index skip: expected 0, received
+8448` to stderr when a JS110 starts streaming, for example in
+`current_ranging_filter.py`.
 
 
 ## 7. Regression checklist

@@ -147,11 +147,11 @@ def environ(visible=None, env=None):
     e['PYTHONDONTWRITEBYTECODE'] = '1'
     e['PYTHONFAULTHANDLER'] = '1'
     e['MPLBACKEND'] = 'Agg'  # plt.show() warns instead of opening a window
+    if env:
+        e.update(env)
     if visible is not None:
         e[ENV_VISIBLE] = visible
         e['PYTHONPATH'] = os.pathsep.join([SHIM_PATH] + [p for p in [e.get('PYTHONPATH')] if p])
-    if env:
-        e.update(env)
     return e
 
 

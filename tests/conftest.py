@@ -92,6 +92,25 @@ def several_devices():
 
 
 @pytest.fixture
+def output_state(device_path):
+    """Read or set the instrument's output to the device under test.
+
+    output_state() returns 'off' or 'on'.  output_state('on') turns it on
+    with automatic current ranging.
+    """
+    from pyjoulescope_driver import Driver
+    topic = 's/i/range/select' if device_path.model == 'js110' else 's/i/range/mode'
+
+    def fn(value=None):
+        with Driver() as d:
+            with d.open(device_path, mode='restore') as device:
+                if value is not None:
+                    device.publish(topic, 'auto' if value == 'on' else 'off')
+                return 'off' if device.query(topic) == 0 else 'on'
+    return fn
+
+
+@pytest.fixture
 def model(device_path):
     """The instrument model under test, such as "js320"."""
     return device_path.model
