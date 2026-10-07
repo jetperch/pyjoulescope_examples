@@ -29,9 +29,12 @@ def _script(tmp_path, code):
 
 
 def test_every_example_is_listed():
-    names = sorted(f[:-3] for f in os.listdir(os.path.join(harness.REPO_PATH, 'bin'))
-                   if f.endswith('.py'))
-    assert names == sorted(harness.EXAMPLES)
+    examples = set()
+    for d in os.listdir(os.path.join(harness.REPO_PATH, 'examples')):
+        for f in os.listdir(os.path.join(harness.REPO_PATH, 'examples', d)):
+            if f.endswith('.py'):
+                examples.add(f'examples/{d}/{f}')
+    assert examples == {p[0] for p in harness.EXAMPLES.values()}
 
 
 def test_output_args_and_returncode(tmp_path):

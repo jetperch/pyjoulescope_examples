@@ -24,7 +24,7 @@ import os
 
 
 # Force joulescope_examples package to be in Python import path
-PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(PROJECT_PATH)
 from joulescope_examples.detectors import WindowThresholdDetector
 

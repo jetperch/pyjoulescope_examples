@@ -43,47 +43,22 @@ TRACEBACK = 'Traceback (most recent call last)'
 PLOT_SHOWN = 'FigureCanvasAgg is non-interactive, and thus cannot be shown'
 
 
+ENV_WRAPPERS = 'JOULESCOPE_EXAMPLES_WRAPPERS'
+
+
+def _examples():
+    """Map each example's historical bin/ name to the paths that run it."""
+    sys.path.insert(0, os.path.join(REPO_PATH, 'tools'))
+    try:
+        from gen_bin_wrappers import MOVED
+    finally:
+        sys.path.pop(0)
+    return {name[:-3]: [f'examples/{target}', f'bin/{name}'] for name, target in MOVED.items()}
+
+
 # The examples by their historical bin/ name, mapped to the paths that run
-# them, relative to the repository.  Every test runs through each path.
-EXAMPLES = {
-    'accumulators': ['bin/accumulators.py'],
-    'battery_discharge': ['bin/battery_discharge.py'],
-    'capture': ['bin/capture.py'],
-    'capture_all': ['bin/capture_all.py'],
-    'capture_jls_v1': ['bin/capture_jls_v1.py'],
-    'capture_jls_v2': ['bin/capture_jls_v2.py'],
-    'capture_simple': ['bin/capture_simple.py'],
-    'current_range_extract': ['bin/current_range_extract.py'],
-    'current_ranging_filter': ['bin/current_ranging_filter.py'],
-    'detector': ['bin/detector.py'],
-    'downsample_logging': ['bin/downsample_logging.py'],
-    'dut_power': ['bin/dut_power.py'],
-    'energy_printer_host': ['bin/energy_printer_host.py'],
-    'energy_printer_sensor': ['bin/energy_printer_sensor.py'],
-    'fuse_js220': ['bin/fuse_js220.py'],
-    'gpi_region': ['bin/gpi_region.py'],
-    'gpi_synchronized': ['bin/gpi_synchronized.py'],
-    'gpio': ['bin/gpio.py'],
-    'jls_energy_plot': ['bin/jls_energy_plot.py'],
-    'jls_export_points': ['bin/jls_export_points.py'],
-    'jls_plot': ['bin/jls_plot.py'],
-    'jls_recode': ['bin/jls_recode.py'],
-    'low_voltage_shutoff': ['bin/low_voltage_shutoff.py'],
-    'measure': ['bin/measure.py'],
-    'monitor': ['bin/monitor.py'],
-    'read_by_callback': ['bin/read_by_callback.py'],
-    'read_by_method': ['bin/read_by_method.py'],
-    'read_by_pyjoulescope_driver': ['bin/read_by_pyjoulescope_driver.py'],
-    'scan_by_serial_number': ['bin/scan_by_serial_number.py'],
-    'statistics': ['bin/statistics.py'],
-    'statistics_logger': ['bin/statistics_logger.py'],
-    'statistics_v1': ['bin/statistics_v1.py'],
-    'statistics_with_trigger_to_jls': ['bin/statistics_with_trigger_to_jls.py'],
-    'timesync': ['bin/timesync.py'],
-    'trigger': ['bin/trigger.py'],
-    'trigger_host_pyjoulescope_driver': ['bin/trigger_host_pyjoulescope_driver.py'],
-    'windowed_accum': ['bin/windowed_accum.py'],
-}
+# them, relative to the repository: examples/ first, then the bin/ wrapper.
+EXAMPLES = _examples()
 
 
 def paths(name):
@@ -91,8 +66,12 @@ def paths(name):
 
     :param name: The example's historical bin/ name, without ".py".
     :return: The list of paths, to use with pytest.mark.parametrize.
+        Set JOULESCOPE_EXAMPLES_WRAPPERS=0 to skip the bin/ wrappers.
     """
-    return list(EXAMPLES[name])
+    rv = [p for p in EXAMPLES[name] if os.path.isfile(os.path.join(REPO_PATH, p))]
+    if os.environ.get(ENV_WRAPPERS, '1') == '0':
+        rv = rv[:1]
+    return rv
 
 
 @dataclasses.dataclass
