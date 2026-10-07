@@ -145,6 +145,22 @@ def output_state(device_path):
 
 
 @pytest.fixture
+def trigger_level(device_path):
+    """Read the TRIGGER level, 0 or 1, on a JS220 or JS320.
+
+    The trigger input reads the level that the trigger output drives.
+    """
+    from pyjoulescope_driver import Driver
+
+    def fn():
+        with Driver() as d:
+            with d.open(device_path, mode='restore') as device:
+                value = device.publish_and_wait('s/gpi/+/!req', 0, 's/gpi/+/!value', timeout=2)
+                return (int(value) >> 7) & 1
+    return fn
+
+
+@pytest.fixture
 def statistics_100hz(device_path):
     """Leave the instrument at 100 Hz statistics, as measure.py does."""
     from pyjoulescope_driver import Driver
