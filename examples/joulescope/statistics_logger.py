@@ -37,16 +37,16 @@ def get_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument('--out', '-o',
                    help='The output file.')
-    p.add_argument('--console_fmt',
+    p.add_argument('--console-fmt', '--console_fmt',
                    default=CONSOLE_FMT,
                    help='The console formatting string')
-    p.add_argument('--console_join',
+    p.add_argument('--console-join', '--console_join',
                    default=CONSOLE_JOIN,
                    help='The console join string')
-    p.add_argument('--file_fmt',
+    p.add_argument('--file-fmt', '--file_fmt',
                    default=FILE_FMT,
                    help='The file formatting string')
-    p.add_argument('--file_join',
+    p.add_argument('--file-join', '--file_join',
                    default=FILE_JOIN,
                    help='The file join string')
     return p

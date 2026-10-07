@@ -26,7 +26,7 @@ ROW = re.compile(rf'^{NUMBER}(,{NUMBER},{NUMBER},{NUMBER})+$')
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
-    for option in ['--out', '-o', '--console_fmt', '--console_join', '--file_fmt', '--file_join']:
+    for option in ['--out', '-o', '--console-fmt', '--console-join', '--file-fmt', '--file-join']:
         assert option in r.stdout
 
 
@@ -57,13 +57,13 @@ def test_device(path, device_path, tmp_path):
 
 
 def test_formats(path, device_path, tmp_path):
-    r = harness.run(path, '--console_fmt', '{i:.3f}|{v:.2f}', '--console_join', ';',
-                    '--file_join', ' ', '-o', 'out.csv', cwd=tmp_path, visible=device_path,
+    r = harness.run(path, '--console-fmt', '{i:.3f}|{v:.2f}', '--console-join', ';',
+                    '--file-join', ' ', '-o', 'out.csv', cwd=tmp_path, visible=device_path,
                     interrupt_on=lambda out: out.count('\n') >= 3)
     assert r.returncode == 0, r
     for row in r.lines[1:]:
         assert re.match(rf'^{NUMBER};{NUMBER}\|{NUMBER}$', row), r
-    for line in (tmp_path / 'out.csv').read_text().splitlines():  # the default --file_fmt
+    for line in (tmp_path / 'out.csv').read_text().splitlines():  # the default --file-fmt
         assert re.match(rf'^{NUMBER} {NUMBER},{NUMBER},{NUMBER}$', line), line
 
 

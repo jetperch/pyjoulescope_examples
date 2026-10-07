@@ -41,7 +41,7 @@ Breaking changes:
 
 Fixes:
 
-* statistics_logger.py: format file rows with `--file_fmt` (was ignored),
+* statistics_logger.py: format file rows with `--file-fmt` (was ignored),
   and exit 1 when no Joulescope is connected (printed rows forever).
 * read_by_method.py and read_by_callback.py: run from any directory.
   They previously needed the repository on PYTHONPATH.
@@ -78,8 +78,8 @@ Other changes:
   jls_energy_plot.py.  It previously did nothing without `--out` or
   `--show`.
 * Options use hyphens, such as `--sample-count`.  The underscore spelling,
-  such as `--sample_count`, still works.  Changed in jls_plot.py and
-  jls_energy_plot.py.
+  such as `--sample_count`, still works.  Changed in jls_plot.py,
+  jls_energy_plot.py and statistics_logger.py.
 * requirements.txt now installs every package that the examples import:
   pyjoulescope_driver, pyjls, openpyxl, psutil and, on Windows, pywin32.
 * Moved the examples from bin/ into examples/, grouped by package:
