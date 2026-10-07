@@ -29,7 +29,8 @@ See https://github.com/jetperch/joulescope_driver
 """
 
 from pyjls import Writer, SignalType, DataType
-from pyjoulescope_driver import Driver
+from pyjoulescope_driver import Driver, device_filter
+import argparse
 import openpyxl
 import sys
 import time
@@ -242,16 +243,24 @@ class Monitor:
         self._summary_xlsx_close()
 
 
+def get_parser():
+    p = argparse.ArgumentParser(
+        description='Perform long-term current monitoring.')
+    p.add_argument('--device', '-d',
+                   help='The Joulescope to use, such as "js220", "000415" or "js220-000415".')
+    return p
+
+
 def run():
+    args = get_parser().parse_args()
     with Driver() as driver:
-        device_paths = driver.device_paths()
-        if len(device_paths) == 0:
-            print('No Joulescope found')
+        try:
+            device_prefix = driver.find_one_device(args.device, brand='joulescope')
+        except device_filter.DeviceFilterError as ex:
+            print(ex)
+            if len(ex.matches) > 1:
+                print('Use "--device" to specify the desired device.')
             return 1
-        elif len(device_paths) > 1:
-            print('Multiple Joulescope found')
-            return 1
-        device_prefix = device_paths[0]
         monitor = Monitor(driver, device_prefix)
         monitor.open()
         try:
@@ -260,6 +269,7 @@ def run():
         except KeyboardInterrupt:
             pass
         monitor.close()
+    return 0
 
 
 if __name__ == '__main__':

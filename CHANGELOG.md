@@ -39,7 +39,7 @@ Breaking changes:
   `--serial_number` still work.  The messages for no matching device or
   several now come from pyjoulescope_driver, such as
   `No Joulescope found`.  Changed in measure.py, dut_power.py, detector.py,
-  gpi_region.py, timesync.py, trigger_out.py (was
+  gpi_region.py, monitor.py, timesync.py, trigger_out.py (was
   trigger_host_pyjoulescope_driver.py),
   fuse.py (was fuse_js220.py) and read.py (was
   read_by_pyjoulescope_driver.py), which has no `-d`, since `-d` is

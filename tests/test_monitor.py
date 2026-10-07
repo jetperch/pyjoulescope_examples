@@ -34,6 +34,13 @@ def _capture(path, device_path, tmp_path):
     return r
 
 
+def test_help(path):
+    r = harness.run(path, '--help')
+    assert r.returncode == 0, r
+    for option in ['--device', '-d']:
+        assert option in r.stdout
+
+
 def test_no_device(path, tmp_path):
     r = harness.run(path, cwd=tmp_path)
     assert r.lines == ['No Joulescope found']
@@ -47,7 +54,20 @@ def test_no_device_exit_code(path, tmp_path):
 
 def test_several_devices(path, several_devices, tmp_path):
     r = harness.run(path, cwd=tmp_path, visible=several_devices)
-    assert r.lines == ['Multiple Joulescope found']
+    assert r.returncode == 1, r
+    assert r.lines[0].startswith('Multiple Joulescopes found: [')
+    assert r.lines[1] == 'Use "--device" to specify the desired device.'
+    target = several_devices.split(',')[0]
+    r = harness.run(path, '-d', target.split('/')[-1], cwd=tmp_path, visible=several_devices,
+                    interrupt_after=2)
+    assert r.interrupted and not r.killed, r
+    assert r.returncode == 0, r
+
+
+def test_device_unknown(path, device_path, tmp_path):
+    r = harness.run(path, '--device', 'ZZZZ', cwd=tmp_path, visible=device_path)
+    assert r.returncode == 1, r
+    assert r.lines == [f'Device "ZZZZ" not found in [{device_path!r}]']
 
 
 def test_device(path, device_path, tmp_path):
