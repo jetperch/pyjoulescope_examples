@@ -113,13 +113,17 @@ class Accumulators:
     def _run_sensor(self, args):
         device = scan_require_one(config='off')
         signal.signal(signal.SIGINT, self._on_user_exit)
-        device.statistics_callback_register(self._on_statistics)
         with device:
+            device.parameter_set('reduction_frequency', '2 Hz')
             device.parameter_set('i_range', 'auto')
             device.parameter_set('v_range', '15V')
             self._display_run_info(args)
-            while not self._quit:
-                time.sleep(0.1)
+            count = None if args.duration is None else args.duration * 2  # at 2 Hz
+            for statistics in device.statistics_iter(count=count):
+                if self._quit:
+                    break
+                self._on_statistics(statistics)
+            self._on_stop()
 
     def run(self):
         args = get_parser().parse_args()

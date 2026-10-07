@@ -87,11 +87,13 @@ def test_sensor(path, device_path):
     assert 'Warning' not in r.stderr, r
 
 
-@pytest.mark.xfail(strict=True, reason='6.24 --source sensor ignores --duration')
 def test_sensor_duration(path, device_path):
     r = harness.run(path, '--source', 'sensor', '-d', 2, '-u', 1, visible=device_path, timeout=10)
     assert not r.interrupted, r
     assert r.returncode == 0, r
+    assert r.lines[0] == 'Accumulation in progress for 2 seconds.'
+    assert r.lines[-2] == 'Capture duration completed.'
+    assert SUMMARY.match(r.lines[-1]), r
 
 
 def test_sensor_ctrl_c(path, device_path):

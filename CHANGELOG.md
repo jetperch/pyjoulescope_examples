@@ -43,8 +43,9 @@ Fixes:
   time64 ticks).
 * statistics.py: display statistics at 2 Hz on a JS220, rather than at
   the rate that a previous program left.
-* accumulators.py --source sensor: Ctrl-C prints the final summary (was a
-  KeyboardInterrupt traceback).
+* accumulators.py --source sensor: stop after `--duration` (was ignored),
+  and print the final summary on Ctrl-C (was a KeyboardInterrupt
+  traceback).
 
 Other changes:
 
