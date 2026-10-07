@@ -513,7 +513,7 @@ def run():
         format='%(asctime)s %(levelname)-8s %(message)s',
         level=logging.WARNING,
         datefmt='%Y-%m-%dT%H:%M:%S')
-    print(f'Starting logging {f"for {args.time} seconds" if args.duration is not None else ""} - press CTRL-C to stop')
+    print(f'Starting logging {f"for {args.duration} seconds" if args.duration is not None else ""} - press CTRL-C to stop')
     logger = Logger(args)
     return logger.run()
 

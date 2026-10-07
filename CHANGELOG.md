@@ -57,6 +57,7 @@ Breaking changes:
 
 Fixes:
 
+* downsample_logging.py: `--duration` works (was AttributeError).
 * monitor.py: write voltage in the voltage columns (was current), exit 1
   when no Joulescope is connected (was 0), record 50 Hz statistics on a
   JS110 (was 100 Hz), and no longer allocate an unused 500 MB buffer or

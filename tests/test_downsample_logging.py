@@ -188,12 +188,15 @@ def test_frequency(path, documents, device_path, request):
         assert 0.2 < dt < 0.3
 
 
-@pytest.mark.xfail(strict=True, reason='6.5 --duration raises AttributeError')
-def test_duration(path, documents, device_path):
-    env, _ = documents
+def test_duration(path, documents, device_path, request):
+    _xfail_js320(request, device_path)
+    env, log_dir = documents
     r = harness.run(path, '--duration', 2, env=env, visible=device_path, timeout=15)
     assert not r.interrupted, r
     assert r.returncode == 0, r
+    assert r.lines[0] == 'Starting logging for 2.0 seconds - press CTRL-C to stop'
+    rows = _rows(_logs(log_dir)[0][1][0])
+    assert 2 <= len(rows) <= 6, rows
 
 
 @pytest.mark.xfail(strict=True, reason='6.4 --resume restores charge and energy from the current '
