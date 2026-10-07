@@ -42,9 +42,7 @@ def test_no_device(path):
     assert len(r.lines) == 1 and 'not found' in r.lines[0], r
 
 
-def test_duration(path, device_path, request):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason='6.22 no JS320 support'))
+def test_duration(path, device_path):
     r = harness.run(path, '--duration', 1, visible=device_path)
     if device_path.model == 'js110':
         assert r.returncode == 1, r
@@ -56,8 +54,8 @@ def test_duration(path, device_path, request):
 
 
 def test_ctrl_c(path, device_path):
-    if device_path.model != 'js220':
-        pytest.skip('only runs on the JS220 on main')
+    if device_path.model == 'js110':
+        pytest.skip('the JS110 is not supported')
     r = harness.run(path, '-f', 100000, visible=device_path, interrupt_after=2)
     assert r.interrupted and not r.killed, r
     assert r.returncode == 0, r
@@ -78,7 +76,6 @@ def test_device_js110(path, device_path):
     assert len(r.lines) == 1 and r.lines[0].startswith(f'{device_path} is not supported'), r
 
 
-@pytest.mark.xfail(strict=True, reason='6.22 no JS320 support')
 def test_several_devices(path, several_devices):
     supported = [p for p in several_devices.split(',') if '/js110/' not in p]
     if len(supported) < 2:

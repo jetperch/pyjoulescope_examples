@@ -41,7 +41,8 @@ def get_parser():
                    help='The capture duration in float seconds. '
                         + 'Add a suffix for other units: s=seconds, m=minutes, h=hours, d=days')
     p.add_argument('--device', '-d',
-                   help='The Joulescope JS220 to use, such as "000415".  Defaults to the only JS220.')
+                   help='The Joulescope JS220 or JS320 to use, such as "000415".  '
+                        + 'Defaults to the only JS220 or JS320.')
     p.add_argument('--serial-number', '--serial_number', dest='device', help=argparse.SUPPRESS)
     return p
 
@@ -77,14 +78,14 @@ class DetectorRunner:
 
         with Driver() as d:
             try:
-                device_path = d.find_one_device(args.device or 'js220', brand='joulescope')
+                device_path = d.find_one_device(args.device or ['js220', 'js320'], brand='joulescope')
             except device_filter.DeviceFilterError as ex:
                 print(ex)
                 if len(ex.matches) > 1:
                     print('Use "--device" to specify the desired device.')
                 return 1
-            if device_path.model != 'js220':
-                print(f'{device_path} is not supported: use a JS220')
+            if device_path.model == 'js110':
+                print(f'{device_path} is not supported: use a JS220 or JS320')
                 return 1
             with d.open(device_path) as device:  # closing unsubscribes data_fn
                 # Configure the device, adjust as needed
