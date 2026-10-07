@@ -57,18 +57,32 @@ Note that some examples use matplotlib, so be sure to run this last command!
     
 ### Use this code:
 
-Open a command terminal and run the scripts of your choice.  See the bin
-directory for the list of scripts.  For example:
+Open a command terminal and run the scripts of your choice.  The examples
+directory groups the scripts by the package they demonstrate:
 
-    python3 bin\capture_simple.py
+| Directory | Package | Start with |
+| --------- | ------- | ---------- |
+| [examples/joulescope](examples/joulescope) | joulescope, the high-level API | `capture_simple.py`, `scan.py`, `statistics.py`, `capture_jls.py`, `energy_printer.py` |
+| [examples/pyjoulescope_driver](examples/pyjoulescope_driver) | pyjoulescope_driver, the low-level driver | `measure.py`, `read.py`, `dut_power.py` |
+| [examples/pyjls](examples/pyjls) | pyjls, to read JLS files | `jls_plot.py` |
+| [examples/legacy](examples/legacy) | older examples, kept for reference | |
+
+For example:
+
+    python3 examples/joulescope/capture_simple.py
 
 For scripts that take arguments, specify a "--help" argument for details on
 the available arguments:
 
-    python3 bin\downsample_logging.py --help
+    python3 examples/pyjoulescope_driver/downsample_logging.py --help
 
 Many of the scripts also have instructions inside the script.  Use your 
 favorite text editor to open the script.
+
+The scripts used to be in the bin directory.  The bin directory still runs
+each script by its old name, such as `python3 bin/scan_by_serial_number.py`.
+See [tools/gen_bin_wrappers.py](tools/gen_bin_wrappers.py) for where each one
+moved.
 
 
 ## License

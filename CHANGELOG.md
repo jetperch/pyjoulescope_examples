@@ -20,6 +20,19 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 1.0.0
+
+2026 Oct [in progress]
+
+* Moved the examples from bin/ into examples/, grouped by package:
+  joulescope, pyjoulescope_driver, pyjls and legacy.  Some examples have
+  new names, such as scan.py for scan_by_serial_number.py.  The bin/
+  scripts still work by their old names and run the moved examples.
+  See tools/gen_bin_wrappers.py.
+* Added tests that run every example as a user does, with no instrument,
+  each instrument and several instruments.  See tests/README.md.
+
+
 ## 0.14.1
 
 2025 Feb 4
