@@ -56,6 +56,7 @@ def test_device(path, device_path, tmp_path):
     lines = (tmp_path / 'out.csv').read_text().splitlines()
     assert len(lines) >= 3
     assert lines == rows[:len(lines)]
+    assert 'Warning' not in r.stderr, r
 
 
 def test_formats(path, device_path, tmp_path):

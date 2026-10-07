@@ -111,7 +111,7 @@ def run():
     try:
         for device in devices:
             cbk = statistics_callback_factory(device, statistics_queue)
-            device.statistics_callback_register(cbk, 'sensor')
+            device.statistics_callback_register(cbk)
             device.open()
             device.parameter_set('i_range', 'auto')
             device.parameter_set('v_range', '15V')
@@ -122,9 +122,6 @@ def run():
         t_start = time.time()
 
         while not _quit:
-            for device in devices:
-                device.status()
-
             # fetch data from the queue
             while not _quit:
                 try:
