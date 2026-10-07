@@ -20,6 +20,7 @@
 from joulescope import scan
 import argparse
 import signal
+import sys
 import time
 import queue
 
@@ -103,6 +104,9 @@ def run():
 
     signal.signal(signal.SIGINT, stop_fn)  # also quit on CTRL-C
     devices = scan(config='off')
+    if not devices:
+        print('No Joulescope found')
+        return 1
     status_data = {}
 
     if args.out:
@@ -159,4 +163,4 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
+    sys.exit(run())

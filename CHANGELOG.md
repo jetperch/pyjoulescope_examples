@@ -41,7 +41,8 @@ Breaking changes:
 
 Fixes:
 
-* statistics_logger.py: format file rows with `--file_fmt` (was ignored).
+* statistics_logger.py: format file rows with `--file_fmt` (was ignored),
+  and exit 1 when no Joulescope is connected (printed rows forever).
 * read_by_method.py and read_by_callback.py: run from any directory.
   They previously needed the repository on PYTHONPATH.
 * read_by_callback.py: return exactly `--duration` of samples, which was up

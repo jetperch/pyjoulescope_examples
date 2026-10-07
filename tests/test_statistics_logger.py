@@ -30,15 +30,12 @@ def test_help(path):
         assert option in r.stdout
 
 
-def test_no_device_header(path):
-    r = harness.run(path, interrupt_after=2)
-    assert r.lines[0] == 'Joulescopes: '
-
-
-@pytest.mark.xfail(strict=True, reason='6.9 prints rows forever with no instrument')
-def test_no_device_no_rows(path):
-    r = harness.run(path, interrupt_after=2, timeout=10)
-    assert r.lines[1:] == [], r
+def test_no_device(path, tmp_path):
+    r = harness.run(path, '-o', 'out.csv', cwd=tmp_path, timeout=10)
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert r.lines == ['No Joulescope found']
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_device(path, device_path, tmp_path):
