@@ -112,13 +112,12 @@ class Accumulators:
 
     def _run_sensor(self, args):
         device = scan_require_one(config='off')
-        device.statistics_callback_register(self._on_statistics, 'sensor')
+        device.statistics_callback_register(self._on_statistics)
         with device:
             device.parameter_set('i_range', 'auto')
             device.parameter_set('v_range', '15V')
             self._display_run_info(args)
             while not self._quit:
-                device.status()
                 time.sleep(0.1)
 
     def run(self):

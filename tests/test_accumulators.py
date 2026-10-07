@@ -84,6 +84,7 @@ def test_sensor(path, device_path):
                            'Updates displayed every 1 seconds.',
                            'Press CTRL-C to stop.']
     assert SUMMARY.match(r.lines[3]), r
+    assert 'Warning' not in r.stderr, r
 
 
 @pytest.mark.xfail(strict=True, reason='6.24 --source sensor ignores --duration')
