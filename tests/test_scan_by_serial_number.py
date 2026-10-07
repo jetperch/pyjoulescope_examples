@@ -19,7 +19,10 @@ import pytest
 
 
 pytestmark = pytest.mark.parametrize('path', harness.paths('scan_by_serial_number'))
-PROMPT = 'Type number and enter: '
+
+
+def _name(device_path):
+    return f'{device_path.model.upper()}-{device_path.serial_number}'
 
 
 def _info(line):
@@ -31,18 +34,31 @@ def _info(line):
 def test_no_device_serial_number(path):
     r = harness.run(path, '000415')
     assert r.returncode == 1, r
-    assert 'Device not found with serial number 000415' in r.stderr
+    assert not r.has_traceback, r
+    assert '000415' in r.stdout
 
 
-def test_no_device_prompt(path):
+def test_no_device_list(path):
     r = harness.run(path)
-    assert r.returncode == 1, r
-    assert r.stdout == PROMPT
-    assert 'EOFError' in r.stderr
+    assert r.returncode == 0, r
+    assert r.stdout == ''
 
 
-def test_serial_number(path, device_path):
-    r = harness.run(path, device_path.serial_number, visible=device_path)
+def test_list(path, device_path):
+    r = harness.run(path, visible=device_path)
+    assert r.returncode == 0, r
+    assert r.lines == [_name(device_path)]
+
+
+@pytest.mark.parametrize('form', ['serial_number', 'lower', 'model', 'name'])
+def test_device(path, device_path, form):
+    spec = {
+        'serial_number': device_path.serial_number,
+        'lower': device_path.serial_number.lower(),
+        'model': device_path.model,
+        'name': _name(device_path),
+    }[form]
+    r = harness.run(path, spec, visible=device_path)
     assert r.returncode == 0, r
     assert len(r.lines) == 1, r
     info = _info(r.lines[0])
@@ -53,49 +69,26 @@ def test_serial_number(path, device_path):
 def test_serial_number_unknown(path, device_path):
     r = harness.run(path, 'ZZZZ', visible=device_path)
     assert r.returncode == 1, r
-    assert 'Device not found with serial number ZZZZ' in r.stderr
+    assert not r.has_traceback, r
+    assert 'ZZZZ' in r.stdout
+    assert device_path in r.stdout  # lists the available devices
 
 
-def test_serial_number_case_sensitive(path, device_path):
-    serial_number = device_path.serial_number.lower()
-    if serial_number == device_path.serial_number:
-        pytest.skip('serial number has no letters')
-    r = harness.run(path, serial_number, visible=device_path)
-    assert r.returncode == 1, r
-    assert f'Device not found with serial number {serial_number}' in r.stderr
-
-
-def test_prompt(path, device_path):
-    r = harness.run(path, stdin='1\n', visible=device_path)
+def test_extra_args_ignored(path, device_path):
+    r = harness.run(path, device_path.serial_number, 'extra', visible=device_path)
     assert r.returncode == 0, r
-    assert r.lines[0] == f'1: {device_path.serial_number}'
-    assert r.lines[1].startswith(PROMPT)
-    info = _info(r.lines[1][len(PROMPT):])
-    assert info['serial_number'] == device_path.serial_number
-
-
-def test_prompt_eof(path, device_path):
-    r = harness.run(path, visible=device_path)
-    assert r.returncode == 1, r
-    assert r.stdout == f'1: {device_path.serial_number}\n{PROMPT}'
-    assert 'EOFError' in r.stderr
-
-
-def test_too_many_args_prompts(path, device_path):
-    r = harness.run(path, device_path.serial_number, 'extra', stdin='1\n', visible=device_path)
-    assert r.returncode == 0, r
-    assert r.lines[0] == f'1: {device_path.serial_number}'
+    assert _info(r.lines[0])['serial_number'] == device_path.serial_number
 
 
 def test_several_devices(path, several_devices):
-    serial_numbers = [p.split('/')[-1] for p in several_devices.split(',')]
-    r = harness.run(path, stdin='2\n', visible=several_devices)
+    paths = several_devices.split(',')
+    r = harness.run(path, visible=several_devices)
     assert r.returncode == 0, r
-    listed = r.lines[:len(serial_numbers)]
-    assert [x.split(': ')[0] for x in listed] == [str(k + 1) for k in range(len(serial_numbers))]
-    assert sorted(x.split(': ')[1] for x in listed) == sorted(serial_numbers)
-    info = _info(r.lines[len(serial_numbers)][len(PROMPT):])
-    assert info['serial_number'] == listed[1].split(': ')[1]
-    r = harness.run(path, serial_numbers[-1], visible=several_devices)
+    assert sorted(r.lines) == sorted(f'{p.split("/")[1].upper()}-{p.split("/")[2]}' for p in paths)
+    serial_number = paths[-1].split('/')[-1]
+    r = harness.run(path, serial_number, visible=several_devices)
     assert r.returncode == 0, r
-    assert _info(r.lines[0])['serial_number'] == serial_numbers[-1]
+    assert _info(r.lines[0])['serial_number'] == serial_number
+    r = harness.run(path, several_devices, visible=several_devices)
+    assert r.returncode == 1, r  # matches more than one
+    assert not r.has_traceback, r

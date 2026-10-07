@@ -28,6 +28,12 @@ Breaking changes:
 
 * Requires Python 3.12 or newer, joulescope 1.6.1 or newer and
   pyjoulescope_driver 2.5.0 or newer.
+* scan.py (was scan_by_serial_number.py) lists the connected Joulescopes
+  when given no argument, instead of prompting on stdin.  Its argument is
+  now a device specification: a serial number as before, matched without
+  regard to case, or a model, such as js220, or both, such as js220-000415.
+  An unknown device prints the available devices and exits 1, instead of
+  raising KeyError.
 
 Fixes:
 
