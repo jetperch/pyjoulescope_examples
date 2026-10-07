@@ -65,6 +65,16 @@ def test_read(path, device_path, args, duration):
     assert ' INFO ' in r.stderr  # logs at INFO by default
 
 
+def test_read_partial_chunk(path, device_path, request):
+    if device_path.model != 'js110':  # the JS110 sample ids start at 0, which hides 6.7
+        request.applymarker(pytest.mark.xfail(
+            strict=True, reason='6.7 returns the zero-padded buffer when sample ids do not start at 0'))
+    r = harness.run(path, '-d', 0.305, visible=device_path, env=ENV)
+    assert r.returncode == 0, r
+    m = FOUND.match(r.lines[1])
+    assert int(m.group(2)) == round(0.305 * harness.SAMPLE_RATE[device_path.model]), r
+
+
 @pytest.mark.xfail(strict=True, reason='6.8 plot_cal.py uses BrokenBarHCollection, removed in Matplotlib 3.9')
 def test_plot(path, device_path):
     r = harness.run(path, '-d', 0.1, '--plot', visible=device_path, env=ENV)
