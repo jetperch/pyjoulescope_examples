@@ -71,10 +71,7 @@ def test_ctrl_c(path, device_path):
     assert 0 < int(m.group(2)) < 3 * harness.SAMPLE_RATE[device_path.model], r
 
 
-def test_read_partial_chunk(path, device_path, request):
-    if device_path.model != 'js110':  # the JS110 stops at exactly the duration
-        request.applymarker(pytest.mark.xfail(
-            strict=True, reason='6.31 returns up to 9,999 samples more than --duration'))
+def test_read_partial_chunk(path, device_path):
     r = harness.run(path, '-d', 0.305, visible=device_path)
     assert r.returncode == 0, r
     m = FOUND.match(r.lines[1])

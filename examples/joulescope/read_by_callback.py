@@ -50,10 +50,9 @@ class StreamProcess:
     """Receive and store streaming Joulescope data."""
 
     def __init__(self, duration, sampling_frequency):
-        samples = int(duration * sampling_frequency)
+        samples = int(round(duration * sampling_frequency))
         self.chunk_size = 10000
-        length = ((samples + self.chunk_size - 1) // self.chunk_size) * self.chunk_size
-        self._buffer = np.empty((length, 2), dtype=np.float32)
+        self._buffer = np.empty((samples, 2), dtype=np.float32)
         self._buffer[:] = 0.0  # force python & OS to allocate the memory
         self.idx = None         # the next sample index to process.
         self.idx_offset = None  # the sample index offset, JS220 does not reset.
