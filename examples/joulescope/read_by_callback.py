@@ -17,13 +17,20 @@
 
 """Use the stream process callbacks to get data from Joulescope."""
 
-from joulescope_examples.plot_cal import plot_iv, print_stats
 from joulescope import scan_require_one
 import argparse
 import logging
 import numpy as np
+import os
 import signal
+import sys
 import time
+
+
+# Force joulescope_examples package to be in Python import path
+PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(PROJECT_PATH)
+from joulescope_examples.plot_cal import plot_iv, print_stats
 
 
 def get_parser():

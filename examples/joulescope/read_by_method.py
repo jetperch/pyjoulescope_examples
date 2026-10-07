@@ -22,10 +22,17 @@ For longer durations, use the stream processes as shown in the
 read_by_callback.py example.
 """
 
-from joulescope_examples.plot_cal import plot_iv, print_stats
 from joulescope import scan_require_one
 import argparse
 import logging
+import os
+import sys
+
+
+# Force joulescope_examples package to be in Python import path
+PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(PROJECT_PATH)
+from joulescope_examples.plot_cal import plot_iv, print_stats
 
 
 DURATION_MAX = 120  # in seconds

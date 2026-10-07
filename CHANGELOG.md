@@ -41,6 +41,8 @@ Breaking changes:
 
 Fixes:
 
+* read_by_method.py and read_by_callback.py: run from any directory.
+  They previously needed the repository on PYTHONPATH.
 * jls_plot.py: plot JLS v2 files shorter than 1000 samples (was
   ZeroDivisionError).
 * jls_export_points.py: report an exceeded `--duration` in seconds (was
