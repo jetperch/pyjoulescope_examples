@@ -18,13 +18,10 @@
 """Capture statistics data, analyze for trigger, and capture full-rate data
 to JLS v2 file on trigger."""
 
-from joulescope import scan_require_one
-from joulescope.jls_v2_writer import SIGNALS, _signals_validator, _sampling_rate_validator
-from pyjls import Writer, SourceDef, SignalDef, SignalType, DataType
+from joulescope import scan_require_one, JlsWriter
 from joulescope.units import duration_to_seconds
 import argparse
 import datetime
-import numpy as np
 import signal
 import time
 
@@ -35,119 +32,13 @@ def now_str():
     return s
 
 
-class CustomJlsWriter:
-
-    def __init__(self, device_info, filename, signals=None):
-        """Create a new JLS file writer instance.
-
-        :param device_info: The Joulescope device info with extra 'host' key.
-        :param filename: The output ".jls" filename.
-        :param signals: The signals to record as either a list of string names
-            or a comma-separated string.  The supported signals include
-            ['current', 'voltage', 'power']
-
-        This class implements joulescope.driver.StreamProcessApi and may also
-        be used as a context manager.
-
-        This class modifies joulescope.jls_v2_writer.JlsWriter to used cached
-        device information.  As of 2022 Jan 6, the call to device.info()
-        while already streaming throws an exception.
-        """
-        self._device_info = device_info
-        self._filename = filename
-        if signals is None:
-            signals = ['current', 'voltage']
-        signals = _signals_validator(signals)
-        self._signals = signals
-        self._wr = None
-        self._idx = None
-
-    def __enter__(self):
-        self.open()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def open(self):
-        """Open and configure the JLS writer file."""
-        self.close()
-        info = self._device_info
-        sampling_rate = info['host']['sampling_frequency']
-        sampling_rate = _sampling_rate_validator(sampling_rate)
-
-        source = SourceDef(
-            source_id=1,
-            name=info['host']['name'],
-            vendor='Jetperch',
-            model=info['ctl']['hw'].get('model', 'JS110'),
-            version=info['ctl']['hw'].get('rev', '-'),
-            serial_number=info['ctl']['hw']['sn_mfg'],
-        )
-
-        wr = Writer(self._filename)
-        try:
-            wr.source_def_from_struct(source)
-            for s in self._signals:
-                idx, units = SIGNALS[s]
-                s_def = SignalDef(
-                    signal_id=idx,
-                    source_id=1,
-                    signal_type=SignalType.FSR,
-                    data_type=DataType.F32,
-                    sample_rate=sampling_rate,
-                    name=s,
-                    units=units,
-                )
-                wr.signal_def_from_struct(s_def)
-
-        except Exception:
-            wr.close()
-            raise
-
-        self._wr = wr
-        return wr
-
-    def close(self):
-        """Finalize and close the JLS file."""
-        wr, self._wr = self._wr, None
-        if wr is not None:
-            wr.close()
-
-    def stream_notify(self, stream_buffer):
-        """Handle incoming stream data.
-
-        :param stream_buffer: The :class:`StreamBuffer` instance which contains
-            the new data from the Joulescope.
-        :return: False to continue streaming.
-        """
-        # called from USB thead, keep fast!
-        # long-running operations will cause sample drops
-        start_id, end_id = stream_buffer.sample_id_range
-        if self._idx is None and start_id != end_id:
-            self._idx = start_id
-        if self._idx < end_id:
-            data = stream_buffer.samples_get(self._idx, end_id, fields=self._signals)
-            for s in self._signals:
-                x = np.ascontiguousarray(data['signals'][s]['value'])
-                idx = SIGNALS[s][0]
-                self._wr.fsr_f32(idx, self._idx, x)
-            self._idx = end_id
-        return False
-
-
-
 class StatisticsWithTrigger:
 
     def __init__(self, device, duration=120.0, signals='current,voltage'):
         self._device = device
-        info = device.info()
-        info['host'] = {
-            'name': str(device),
-            'sampling_frequency': device.parameter_get('sampling_frequency'),
-            'calibration': device.calibration,
-        }
-        self._device_info = info
+        # Read the device now, since the trigger starts the JLS file on the USB thread.
+        self._info = device.info()
+        self._sampling_frequency = device.parameter_get('sampling_frequency')
         self._duration = duration
         self._signals = signals
         self._base_filename = now_str()
@@ -180,7 +71,8 @@ class StatisticsWithTrigger:
     def _capture_start(self):
         print('jls capture start')
         fname = f'{self._base_filename}_{self._jls_idx:04d}.jls'
-        self._jls_writer = CustomJlsWriter(self._device_info, fname, self._signals)
+        self._jls_writer = JlsWriter(self._device, fname, self._signals, info=self._info,
+                                     sampling_frequency=self._sampling_frequency)
         self._jls_writer.open()
         self._jls_idx += 1
 

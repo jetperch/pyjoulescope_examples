@@ -41,6 +41,9 @@ Breaking changes:
 
 Fixes:
 
+* statistics_with_trigger_to_jls.py: record the instrument model in the
+  JLS file (was JS110 on every model), and record on a JS110 (was
+  KeyError).
 * statistics_logger.py: format file rows with `--file-fmt` (was ignored),
   and exit 1 when no Joulescope is connected (printed rows forever).
 * read_by_method.py and read_by_callback.py: run from any directory.

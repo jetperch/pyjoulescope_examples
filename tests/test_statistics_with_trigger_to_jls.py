@@ -76,7 +76,6 @@ def test_trigger(path, device_path, tmp_path):
     assert s['current']['length'] >= fs
 
 
-@pytest.mark.xfail(strict=True, reason='6.15 records the wrong source model')
 def test_trigger_source_model(path, device_path, tmp_path):
     from pyjls import Reader
     _run_trigger(path, device_path, tmp_path, '--duration', 1)
