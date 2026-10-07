@@ -37,6 +37,9 @@ def get_parser():
                    help='Selected the GPI Vref source.')
     p.add_argument('--out',
                    help='The option output CSV file.')
+    p.add_argument('--device', '-d',
+                   help='The Joulescopes to use, such as "js220", "000415" or "js220-000415". '
+                        + 'Defaults to all connected Joulescopes.')
 
     return p
 
@@ -116,7 +119,7 @@ def run():
         jsdrv.log_level = 'WARNING'
 
         verbose('Find the connected devices')
-        device_paths = sorted(jsdrv.device_paths())
+        device_paths = jsdrv.find_devices(args.device, brand='joulescope')
         verbose(f'Found devices: {device_paths}')
 
         verbose('Open and configure each device')

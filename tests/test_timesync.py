@@ -26,7 +26,7 @@ pytestmark = pytest.mark.parametrize('path', harness.paths('timesync'))
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
-    for option in ['--verbose', '-v', '--vref', '--out']:
+    for option in ['--verbose', '-v', '--vref', '--out', '--device', '-d']:
         assert option in r.stdout
 
 
@@ -55,3 +55,10 @@ def test_device(path, device_path, tmp_path):
         assert r.lines[3] == f'Unsupported device {device_path}: ignore'
     else:
         assert r.lines[3] == 'Monitor each device'
+
+
+def test_device_filter(path, several_devices):
+    target = sorted(several_devices.split(','))[-1]
+    r = harness.run(path, '-v', '-d', target.split('/')[-1], visible=several_devices, interrupt_after=2)
+    assert r.returncode == 0, r
+    assert r.lines[1] == f"Found devices: ['{target}']"
