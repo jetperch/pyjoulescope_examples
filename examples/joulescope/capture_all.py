@@ -20,9 +20,9 @@
 from joulescope import scan, JlsWriter
 import argparse
 import os
-import sys
 import signal
-import time
+import sys
+import threading
 
 
 def get_parser():
@@ -40,19 +40,14 @@ def get_parser():
 
 
 def run():
-    quit_ = False
-
-    def do_quit(*args, **kwargs):
-        nonlocal quit_
-        quit_ = 'quit from SIGINT'
-
-    def on_stop(event, message):
-        nonlocal quit_
-        quit_ = 'quit from stop'
-
     args = get_parser().parse_args()
+    done = threading.Event()
+
+    def on_stop(*args, **kwargs):  # on Ctrl-C, and on the USB thread when a device stops
+        done.set()
+
     filename_base, filename_ext = os.path.splitext(args.out)
-    signal.signal(signal.SIGINT, do_quit)
+    signal.signal(signal.SIGINT, on_stop)
     devices = scan(config='auto')
     if not devices:
         print('No Joulescope found')
@@ -77,13 +72,12 @@ def run():
             items.append([device, recorder])
             device.stream_process_register(recorder)
 
-        if not quit_:
-            for device, _ in items:
-                device.start(stop_fn=on_stop, duration=args.duration)
+        for device, _ in items:
+            device.start(stop_fn=on_stop, duration=args.duration)
 
         print('Capturing data: type CTRL-C to stop')
-        while not quit_:
-            time.sleep(0.01)
+        while not done.wait(0.1):  # a timeout keeps Ctrl-C responsive
+            pass
     finally:
         for device, recorder in items:
             try:
