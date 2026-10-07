@@ -173,7 +173,7 @@ def run():
                 jsdrv.publish(f'{device_path}/s/i/range/mode', 'auto')
                 jsdrv.publish(f'{device_path}/s/v/range/mode', 'auto')
                 jsdrv.publish(f'{device_path}/c/trigger/dir', 1)
-                jsdrv.publish(f'{device_path}/s/gpo/+/!set', 1 << 7)
+                jsdrv.publish(f'{device_path}/s/gpo/+/!clr', 1 << 7)  # start low
                 start_condition = _DetectDuration(args.start_duration, lambda x: x > args.start_threshold)
                 stop_condition = _DetectDuration(args.stop_duration, lambda x: x < args.stop_threshold)
                 handler = DeviceHandler(jsdrv, device_path, args.signal, start_condition, stop_condition,

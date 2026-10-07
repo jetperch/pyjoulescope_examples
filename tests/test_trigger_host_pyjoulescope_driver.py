@@ -69,10 +69,9 @@ def test_device(path, device_path):
     assert r.lines[-1] == 'Closing'
 
 
-def test_starts_low(path, device_path, trigger_level, request):
+def test_starts_low(path, device_path, trigger_level):
     if device_path.model == 'js110':
         pytest.skip('the JS110 has no trigger output')
-    request.applymarker(pytest.mark.xfail(strict=True, reason='6.14 starts with its output high'))
     # The bench load never reaches the 1 A start threshold, so the output stays at its start level.
     r = harness.run(path, visible=device_path, interrupt_after=2)
     assert r.returncode == 0, r
