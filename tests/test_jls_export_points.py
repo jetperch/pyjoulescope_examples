@@ -129,7 +129,6 @@ def test_duration_exceeded(path, jls_v2, tmp_path):
     assert not (tmp_path / 'out.csv').exists()
 
 
-@pytest.mark.xfail(strict=True, reason='6.23 reports the exceeded duration in time64 ticks, not seconds')
 def test_duration_exceeded_in_seconds(path, jls_v2, tmp_path):
     r = harness.run(path, jls_v2, 'out.csv', '--duration', 5, cwd=tmp_path)
     assert r.stderr.startswith('ERROR: Duration exceeded: 5.0 > 1.99'), r

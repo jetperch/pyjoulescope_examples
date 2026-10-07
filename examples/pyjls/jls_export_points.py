@@ -134,9 +134,9 @@ def on_cmd(args):
     if args.duration is not None:
         args_duration = int(time64.SECOND * args.duration)
         if args_duration > t64_duration:
-            t1 = time64.duration_to_seconds(args_duration)
-            t2 = time64.duration_to_seconds(t64_duration)
-            return on_error(f'Duration exceeded: {t1} > {t2}\n')
+            t1 = args_duration / time64.SECOND
+            t2 = t64_duration / time64.SECOND
+            return on_error(f'Duration exceeded: {t1} > {t2}')
         t64_duration = args_duration
 
     if args.verbose:

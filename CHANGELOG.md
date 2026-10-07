@@ -33,6 +33,8 @@ Fixes:
 
 * jls_plot.py: plot JLS v2 files shorter than 1000 samples (was
   ZeroDivisionError).
+* jls_export_points.py: report an exceeded `--duration` in seconds (was
+  time64 ticks).
 
 Other changes:
 
