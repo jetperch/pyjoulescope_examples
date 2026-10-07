@@ -276,16 +276,12 @@ def run():
         for device_path in device_paths:
             jsdrv.open(device_path, mode=args.open)
             if args.open == 'defaults':
-                if 'js110' in device_path:
+                if device_path.model == 'js110':
                     jsdrv.publish(f'{device_path}/s/i/range/select', 'auto')
                     jsdrv.publish(f'{device_path}/s/v/range/select', '15 V')
-                elif 'js220' in device_path:
+                else:  # JS220 and JS320
                     jsdrv.publish(f'{device_path}/s/i/range/mode', 'auto')
                     jsdrv.publish(f'{device_path}/s/v/range/mode', 'auto')
-                else:
-                    print(f'Unsupported device {device_path}: ignore')
-                    jsdrv.close(device_path)
-                    continue
             if args.frequency is not None:
                 jsdrv.publish(f'{device_path}/h/fs', int(args.frequency))
             signals_full.extend([(device_path, signal) for signal in signals])

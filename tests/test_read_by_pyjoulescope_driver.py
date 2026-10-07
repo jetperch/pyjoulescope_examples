@@ -20,7 +20,6 @@ import re
 
 pytestmark = pytest.mark.parametrize('path', harness.paths('read_by_pyjoulescope_driver'))
 LINE = re.compile(r'^(u/\w+/\w+)\.(\w+(\[\d\])?): +(\S+) (\S*) \| (.+)$')
-NO_JS320 = '6.22 no JS320 support: skips it, then waits forever'
 
 
 def _parse(lines):
@@ -36,11 +35,6 @@ def _samples(msg):
     m = re.match(r'^(\d+) samples$', msg)
     assert m, msg
     return int(m.group(1))
-
-
-def _xfail_js320(request, device_path):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason=NO_JS320))
 
 
 def test_help(path):
@@ -69,8 +63,7 @@ def test_no_device(path):
     assert r.lines == ['Device not found']
 
 
-def test_default(path, device_path, request):
-    _xfail_js320(request, device_path)
+def test_default(path, device_path):
     r = harness.run(path, visible=device_path, timeout=10)
     assert r.returncode == 0, r
     assert r.lines[0].startswith('[-----')
@@ -84,8 +77,7 @@ def test_default(path, device_path, request):
         assert abs(_samples(value['msg']) - fs) <= 0.01 * fs
 
 
-def test_signals(path, device_path, request):
-    _xfail_js320(request, device_path)
+def test_signals(path, device_path):
     r = harness.run(path, '-d', 0.5, '--no-progress', '--signals', 'i,v,p,r,0', visible=device_path,
                     timeout=10)
     assert r.returncode == 0, r
@@ -96,8 +88,7 @@ def test_signals(path, device_path, request):
         assert abs(_samples(data[(device_path, name)]['msg']) - fs // 2) <= 0.01 * fs
 
 
-def test_verbose(path, device_path, request):
-    _xfail_js320(request, device_path)
+def test_verbose(path, device_path):
     r = harness.run(path, '-v', '-d', 0.2, '--no-progress', visible=device_path, timeout=10)
     assert r.returncode == 0, r
     assert r.lines[:5] == [
@@ -147,8 +138,8 @@ def test_unavailable_signal(path, device_path):
 
 
 def test_several_devices(path, several_devices):
-    supported = [p for p in several_devices.split(',') if '/js320/' not in p]
-    r = harness.run(path, '-d', 0.3, '--no-progress', visible=','.join(supported), timeout=15)
+    paths = several_devices.split(',')
+    r = harness.run(path, '-d', 0.3, '--no-progress', visible=several_devices, timeout=15)
     assert r.returncode == 0, r
     data = _parse(r.lines)
-    assert sorted(data) == sorted((p, s) for p in supported for s in ['current', 'voltage'])
+    assert sorted(data) == sorted((p, s) for p in paths for s in ['current', 'voltage'])
