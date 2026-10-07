@@ -30,7 +30,7 @@ def _png(path):
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
-    for option in ['input', '--out', '--stats', '--show', '--sample_count']:
+    for option in ['input', '--out', '--stats', '--show', '--sample-count']:
         assert option in r.stdout
 
 
@@ -48,8 +48,9 @@ def test_v2_out(path, jls_v2, tmp_path):
     assert not r.plot_shown
 
 
-def test_v1_out(path, jls_v1, tmp_path):
-    r = harness.run(path, jls_v1, '--out', 'out.png', '--stats', '--sample_count', 500, cwd=tmp_path)
+@pytest.mark.parametrize('option', ['--sample-count', '--sample_count'])
+def test_v1_out(path, jls_v1, tmp_path, option):
+    r = harness.run(path, jls_v1, '--out', 'out.png', '--stats', option, 500, cwd=tmp_path)
     assert r.returncode == 0, r
     assert r.lines == [f'Reading JLS v1: {jls_v1}']
     assert _png(tmp_path / 'out.png')
@@ -70,7 +71,7 @@ def test_neither_out_nor_show(path, jls_v2, tmp_path):
 
 
 def test_sample_count_type(path, jls_v2):
-    r = harness.run(path, jls_v2, '--sample_count', '1.5')
+    r = harness.run(path, jls_v2, '--sample-count', '1.5')
     assert r.returncode == 2, r
     assert "invalid int value: '1.5'" in r.stderr
 

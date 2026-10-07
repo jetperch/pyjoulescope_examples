@@ -36,6 +36,8 @@ Fixes:
 
 Other changes:
 
+* Options use hyphens, such as `--sample-count`.  The underscore spelling,
+  such as `--sample_count`, still works.  Changed in jls_plot.py.
 * requirements.txt now installs every package that the examples import:
   pyjoulescope_driver, pyjls, openpyxl, psutil and, on Windows, pywin32.
 * Moved the examples from bin/ into examples/, grouped by package:

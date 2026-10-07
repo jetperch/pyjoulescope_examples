@@ -29,7 +29,7 @@ def get_parser():
     p.add_argument('--show',
                    action='store_true',
                    help='Display the plot.')
-    p.add_argument('--sample_count',
+    p.add_argument('--sample-count', '--sample_count',
                    type=int,
                    default=1000,
                    help='The number of samples to display')
