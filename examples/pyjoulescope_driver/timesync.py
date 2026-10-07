@@ -122,7 +122,7 @@ def run():
         verbose('Open and configure each device')
         opened = []
         for device_path in device_paths:
-            if 'js220' in device_path:
+            if device_path.model != 'js110':  # JS220 and JS320
                 jsdrv.open(device_path, mode='defaults')
                 opened.append(device_path)
                 jsdrv.publish(f'{device_path}/s/i/range/mode', 'auto')

@@ -51,3 +51,7 @@ def test_device(path, device_path, tmp_path):
     assert r.returncode == 0, r
     assert r.lines[:2] == ['Find the connected devices', f"Found devices: ['{device_path}']"]
     assert r.lines[-2:] == ['Monitor each device', 'Closing']
+    if device_path.model == 'js110':
+        assert r.lines[3] == f'Unsupported device {device_path}: ignore'
+    else:
+        assert r.lines[3] == 'Monitor each device'
