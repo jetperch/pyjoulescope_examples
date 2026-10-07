@@ -18,27 +18,35 @@ import pytest
 
 
 pytestmark = pytest.mark.parametrize('path', harness.paths('dut_power'))
-USAGE = 'usage: dut_power.py [on | off | ?]'
 ON = ['1', 'on', 'true', 'enable', 'ON', 'Enable', 'TRUE']
 OFF = ['0', 'off', 'false', 'disable', 'OFF', 'Disable', 'FALSE']
 
 
-def test_no_args_usage(path):
-    r = harness.run(path)
-    assert r.lines[0] == USAGE
+def test_help(path):
+    r = harness.run(path, '--help')
+    assert r.returncode == 0, r
+    for option in ['state', '--device', '-d']:
+        assert option in r.stdout
 
 
 def test_no_args(path):
     r = harness.run(path)
-    assert r.returncode != 0, r
-    assert 'Traceback' not in r.stderr, r
+    assert r.returncode == 2, r
+    assert not r.has_traceback, r
+    assert 'the following arguments are required: state' in r.stderr
 
 
-@pytest.mark.parametrize('arg', ['on', 'off', '?', 'bogus'])
+@pytest.mark.parametrize('arg', ['on', 'off', '?'])
 def test_no_device(path, arg):
     r = harness.run(path, arg)
     assert r.returncode == 0, r
     assert r.stdout == ''
+
+
+def test_invalid(path):
+    r = harness.run(path, 'bogus')
+    assert r.returncode == 2, r
+    assert "invalid choice: 'bogus'" in r.stderr
 
 
 def test_set_and_query(path, device_path, output_state):
@@ -55,11 +63,10 @@ def test_set_and_query(path, device_path, output_state):
     output_state('on')
 
 
-def test_invalid(path, device_path, output_state):
+def test_invalid_leaves_state(path, device_path, output_state):
     output_state('on')
     r = harness.run(path, 'bogus', visible=device_path)
-    assert r.returncode == 1, r
-    assert r.lines == [USAGE]
+    assert r.returncode == 2, r
     assert output_state() == 'on'
 
 
@@ -73,3 +80,18 @@ def test_several_devices(path, several_devices):
     assert r.returncode == 0, r
     r = harness.run(path, '?', visible=several_devices)
     assert r.lines == [f'{p}: on' for p in sorted(paths)]
+
+
+@pytest.mark.parametrize('option', ['--device', '-d'])
+def test_device(path, several_devices, option):
+    paths = sorted(several_devices.split(','))
+    target = paths[0]
+    serial_number = target.split('/')[-1]
+    r = harness.run(path, 'off', option, serial_number, visible=several_devices)
+    assert r.returncode == 0, r
+    r = harness.run(path, '?', visible=several_devices)
+    assert r.lines == [f'{p}: {"off" if p == target else "on"}' for p in paths]
+    r = harness.run(path, '?', option, target.split('/')[1], visible=several_devices)
+    assert r.lines == [f'{target}: off']
+    r = harness.run(path, 'on', option, serial_number, visible=several_devices)
+    assert r.returncode == 0, r

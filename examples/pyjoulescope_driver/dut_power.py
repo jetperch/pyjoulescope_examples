@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2020-2024 Jetperch LLC
+# Copyright 2020-2026 Jetperch LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,47 +18,54 @@
 
 
 from pyjoulescope_driver import Driver
-import time
+import argparse
 import sys
 
 
-_USAGE = "usage: dut_power.py [on | off | ?]"
+ON = ['1', 'on', 'true', 'enable']
+OFF = ['0', 'off', 'false', 'disable']
 
 
-def _topic(device_path):
-    if 'js110' in device_path:
-        return device_path + '/s/i/range/select'
+def get_parser():
+    p = argparse.ArgumentParser(
+        description='Control power to the device under test or query power status.')
+    p.add_argument('state',
+                   type=str.lower,
+                   choices=ON + OFF + ['?'],
+                   metavar='state',
+                   help='"on" or "off" to set the power, or "?" to display it.  '
+                        + 'Also accepts 1, true, enable, 0, false and disable.')
+    p.add_argument('--device', '-d',
+                   help='The Joulescopes to use, such as "js220", "000415" or "js220-000415". '
+                        + 'Defaults to all connected Joulescopes.')
+    return p
+
+
+def _topic(device):
+    if device.device_path.model == 'js110':
+        return 's/i/range/select'
     else:
-        return device_path + '/s/i/range/mode'
+        return 's/i/range/mode'
 
 
-def dut_power_set(jsdrv, device_path, power_on):
+def dut_power_set(device, power_on):
     i_range = 'auto' if power_on else 'off'
-    jsdrv.publish(_topic(device_path), i_range)
+    device.publish(_topic(device), i_range)
 
 
-def dut_power_query(jsdrv, device_path):
-    return 'off' if (0 == jsdrv.query(_topic(device_path))) else 'on'
+def dut_power_query(device):
+    return 'off' if (0 == device.query(_topic(device))) else 'on'
 
 
 def run():
-    if len(sys.argv) != 2:
-        print(_USAGE)
-        return 1
-    arg = sys.argv[1].lower()
+    args = get_parser().parse_args()
     with Driver() as jsdrv:
-        for device_path in sorted(jsdrv.device_paths()):
-            jsdrv.open(device_path, mode='restore')
-            if arg in ['1', 'on', 'true', 'enable']:
-                dut_power_set(jsdrv, device_path, True)
-            elif arg in ['0', 'off', 'false', 'disable']:
-                dut_power_set(jsdrv, device_path, False)
-            elif arg in ['?']:
-                print(f'{device_path}: {dut_power_query(jsdrv, device_path)}')
-            else:
-                print(_USAGE)
-                return 1
-            jsdrv.close(device_path)
+        for device_path in jsdrv.find_devices(args.device, brand='joulescope'):
+            with jsdrv.open(device_path, mode='restore') as device:
+                if args.state == '?':
+                    print(f'{device_path}: {dut_power_query(device)}')
+                else:
+                    dut_power_set(device, args.state in ON)
     return 0
 
 

@@ -38,9 +38,13 @@ Breaking changes:
   js220, or both, such as js220-000415.  `--serial-number` and
   `--serial_number` still work.  The messages for no matching device or
   several now come from pyjoulescope_driver, such as
-  `No Joulescope found`.  Changed in measure.py and read.py (was
-  read_by_pyjoulescope_driver.py), which has no `-d`, since `-d` is
+  `No Joulescope found`.  Changed in measure.py, dut_power.py and read.py
+  (was read_by_pyjoulescope_driver.py), which has no `-d`, since `-d` is
   `--duration`.
+* dut_power.py parses its arguments with argparse.  A missing or invalid
+  state exits 2 with the argparse message, instead of printing the usage.
+  It only controls Joulescope instruments, not other USB devices that the
+  driver lists, such as a MiniBitty.
 * scan.py (was scan_by_serial_number.py) lists the connected Joulescopes
   when given no argument, instead of prompting on stdin.  Its argument is
   now a device specification: a serial number as before, matched without
