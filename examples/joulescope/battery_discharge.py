@@ -40,6 +40,7 @@ def run():
     device = devices[0]
     device.open()
     try:
+        device.parameter_set('reduction_frequency', '2 Hz')
         device.parameter_set('i_range', 'auto')
         device.parameter_set('v_range', '15V')
         first = None

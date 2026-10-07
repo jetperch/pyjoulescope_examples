@@ -74,9 +74,7 @@ def test_ctrl_c(path, device_path, output_state):
     assert output_state() == 'on'  # interrupted: leave the battery connected
 
 
-def test_statistics_rate(path, statistics_100hz, request):
-    if statistics_100hz.model == 'js220':
-        request.applymarker(pytest.mark.xfail(strict=True, reason=harness.STATS_RATE))
+def test_statistics_rate(path, statistics_100hz):
     r = harness.run(path, -100, visible=statistics_100hz, interrupt_after=2.5)
     assert 2 <= len(r.lines) - 1 <= 7, r  # 2 Hz, then "Interrupted by user"
 
