@@ -18,7 +18,6 @@
 """Plot calibrated data"""
 
 import matplotlib.pyplot as plt
-import matplotlib.collections
 import numpy as np
 import os
 import psutil
@@ -38,9 +37,7 @@ def plot_axis(axis, x, y, label=None):
 
     # Fill each NaN region, too
     ymin, ymax = np.min(y[yvalid]), np.max(y[yvalid])
-    collection = matplotlib.collections.BrokenBarHCollection.span_where(
-        x, ymin=ymin, ymax=ymax, where=np.logical_not(yvalid), facecolor='red', alpha=0.5)
-    axis.add_collection(collection)
+    axis.fill_between(x, ymin, ymax, where=np.logical_not(yvalid), facecolor='red', alpha=0.5)
     return axis
 
 

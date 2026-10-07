@@ -66,7 +66,6 @@ def test_read(path, device_path, args, duration):
     assert 'INFO     root read start' in r.stderr  # logs at INFO by default
 
 
-@pytest.mark.xfail(strict=True, reason='6.8 plot_cal.py uses BrokenBarHCollection, removed in Matplotlib 3.9')
 def test_plot(path, device_path):
     r = harness.run(path, '-d', 0.1, '--plot', visible=device_path)
     assert r.returncode == 0, r

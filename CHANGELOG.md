@@ -43,6 +43,8 @@ Fixes:
 
 * read_by_method.py and read_by_callback.py: run from any directory.
   They previously needed the repository on PYTHONPATH.
+* read_by_method.py and read_by_callback.py: `--plot` works with
+  Matplotlib 3.9 and newer (was AttributeError: BrokenBarHCollection).
 * jls_plot.py: plot JLS v2 files shorter than 1000 samples (was
   ZeroDivisionError).
 * jls_export_points.py: report an exceeded `--duration` in seconds (was

@@ -71,7 +71,6 @@ def test_read_partial_chunk(path, device_path, request):
     assert int(m.group(2)) == round(0.305 * harness.SAMPLE_RATE[device_path.model]), r
 
 
-@pytest.mark.xfail(strict=True, reason='6.8 plot_cal.py uses BrokenBarHCollection, removed in Matplotlib 3.9')
 def test_plot(path, device_path):
     r = harness.run(path, '-d', 0.1, '--plot', visible=device_path)
     assert r.returncode == 0, r
