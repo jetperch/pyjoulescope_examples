@@ -145,7 +145,7 @@ def run():
                         'e': data['accumulators']['energy']['value'],
                     }
                     console_txt.append(args.console_fmt.format(**fmt_data))
-                    file_txt.append(args.console_fmt.format(**fmt_data))
+                    file_txt.append(args.file_fmt.format(**fmt_data))
                     status_data[serial_number] = None  # clear entry
                 print(args.console_join.join(console_txt))
                 if f_out:

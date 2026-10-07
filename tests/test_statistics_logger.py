@@ -66,11 +66,10 @@ def test_formats(path, device_path, tmp_path):
     assert r.returncode == 0, r
     for row in r.lines[1:]:
         assert re.match(rf'^{NUMBER};{NUMBER}\|{NUMBER}$', row), r
-    for line in (tmp_path / 'out.csv').read_text().splitlines():
-        assert re.match(rf'^{NUMBER} {NUMBER}\|{NUMBER}$', line), line
+    for line in (tmp_path / 'out.csv').read_text().splitlines():  # the default --file_fmt
+        assert re.match(rf'^{NUMBER} {NUMBER},{NUMBER},{NUMBER}$', line), line
 
 
-@pytest.mark.xfail(strict=True, reason='6.9 ignores --file_fmt')
 def test_file_fmt(path, device_path, tmp_path):
     r = harness.run(path, '--file_fmt', 'X', '-o', 'out.csv', cwd=tmp_path, visible=device_path,
                     interrupt_on=lambda out: out.count('\n') >= 3)
