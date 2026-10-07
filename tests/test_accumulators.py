@@ -94,8 +94,6 @@ def test_sensor_duration(path, device_path):
     assert r.returncode == 0, r
 
 
-@pytest.mark.xfail(strict=True, reason='6.24 --source sensor exits on Ctrl-C with a traceback '
-                                       'and without the final summary')
 def test_sensor_ctrl_c(path, device_path):
     r = harness.run(path, '--source', 'sensor', '-u', 1, visible=device_path,
                     interrupt_on=_updated)

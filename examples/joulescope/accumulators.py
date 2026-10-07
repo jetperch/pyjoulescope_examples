@@ -112,6 +112,7 @@ class Accumulators:
 
     def _run_sensor(self, args):
         device = scan_require_one(config='off')
+        signal.signal(signal.SIGINT, self._on_user_exit)
         device.statistics_callback_register(self._on_statistics)
         with device:
             device.parameter_set('i_range', 'auto')
