@@ -28,7 +28,6 @@ def test_usage(path, args):
     assert r.lines == [USAGE]
 
 
-@pytest.mark.xfail(strict=True, reason='6.25 exits 0 after the usage message')
 def test_usage_exit_code(path):
     r = harness.run(path)
     assert r.returncode != 0, r

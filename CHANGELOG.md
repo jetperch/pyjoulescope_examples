@@ -41,6 +41,7 @@ Breaking changes:
 
 Fixes:
 
+* statistics_v1.py and capture_jls_v1.py: exit 1 after an error (was 0).
 * windowed_accum.py: runs with joulescope 1.6 (was ImportError for
   stats_to_api).
 * statistics_with_trigger_to_jls.py: record the instrument model in the

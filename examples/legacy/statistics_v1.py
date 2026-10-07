@@ -18,6 +18,7 @@
 """Display sensor-side statistics from the first connected Joulescope."""
 
 from joulescope import scan
+import sys
 import time
 
 
@@ -65,4 +66,4 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
+    sys.exit(run())
