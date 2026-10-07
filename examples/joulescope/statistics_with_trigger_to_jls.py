@@ -30,7 +30,7 @@ import time
 
 
 def now_str():
-    d = datetime.datetime.utcnow()
+    d = datetime.datetime.now(datetime.timezone.utc)
     s = d.strftime('%Y%m%d_%H%M%S')
     return s
 
@@ -247,7 +247,6 @@ def run():
         device.parameter_set('v_range', '15V')
         device.start()
         while not _quit:
-            device.status()
             time.sleep(0.1)
         device.stop()
 

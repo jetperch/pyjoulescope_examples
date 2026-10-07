@@ -60,6 +60,7 @@ def test_statistics(path, device_path, tmp_path):
     for row in rows:
         assert ROW.match(row), row
     assert rows[0].startswith('0.0,')
+    assert 'Warning' not in r.stderr, r
 
 
 def test_trigger(path, device_path, tmp_path):
