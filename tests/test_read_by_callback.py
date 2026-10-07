@@ -61,7 +61,20 @@ def test_read(path, device_path, args, duration):
     assert ' INFO ' in r.stderr  # logs at INFO by default
 
 
-def test_read_partial_chunk(path, device_path):
+def test_ctrl_c(path, device_path):
+    # Ctrl-C after about 1 of 5 seconds returns only the samples received.
+    r = harness.run(path, '-d', 5, visible=device_path, interrupt_after=2)
+    assert r.interrupted and not r.killed, r
+    assert r.returncode == 0, r
+    m = FOUND.match(r.lines[1])
+    assert m, r
+    assert 0 < int(m.group(2)) < 3 * harness.SAMPLE_RATE[device_path.model], r
+
+
+def test_read_partial_chunk(path, device_path, request):
+    if device_path.model != 'js110':  # the JS110 stops at exactly the duration
+        request.applymarker(pytest.mark.xfail(
+            strict=True, reason='6.31 returns up to 9,999 samples more than --duration'))
     r = harness.run(path, '-d', 0.305, visible=device_path)
     assert r.returncode == 0, r
     m = FOUND.match(r.lines[1])

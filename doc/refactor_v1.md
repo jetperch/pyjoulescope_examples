@@ -325,6 +325,12 @@ rate the previous program left, such as 100 Hz after `measure.py`, instead
 of 2 Hz.  They scan with `config='off'`, which does not configure the
 instrument, and never set `reduction_frequency`.  See U.5.
 
+6.31. `read_by_callback.py` returns up to 9,999 samples more than
+`--duration` on a JS220 or JS320, such as 310,000 for 0.305 seconds.  It
+rounds its buffer up to 10,000 samples and fills it, and these instruments
+keep streaming briefly after the duration.  This is separate from 6.7, which
+returned zeros after an early stop, such as on Ctrl-C.
+
 No black-box test can show 6.10 (`battery_discharge.py` releasing its lock
 twice): the example stops after the first reading below the threshold, before
 a second can arrive.  Per 2.7 it is not fixed on its own; the refactor
