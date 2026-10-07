@@ -44,9 +44,7 @@ def test_no_device(path):
     assert r.lines == ['Device not found']
 
 
-def test_device(path, device_path, request):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason='6.22 no JS320 support'))
+def test_device(path, device_path):
     r = harness.run(path, '--gpi', '0,1,T', '--vref', '3v3', visible=device_path, interrupt_after=2)
     assert r.interrupted and not r.killed, r
     assert r.returncode == 0, r
@@ -57,8 +55,8 @@ def test_device(path, device_path, request):
 
 
 def test_verbose(path, device_path):
-    if device_path.model != 'js220':
-        pytest.skip('only runs on the JS220 on main')
+    if device_path.model == 'js110':
+        pytest.skip('the JS110 is not supported')
     r = harness.run(path, '-v', visible=device_path, interrupt_after=2)
     assert r.returncode == 0, r
     assert r.lines == [
