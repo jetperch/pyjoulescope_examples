@@ -33,8 +33,9 @@ CURRENT_HIGH = 0.003    # A
 VOLTAGE = 3.3           # V
 CURRENT_MEAN = (CURRENT_LOW + CURRENT_HIGH) / 2
 POWER_MEAN = CURRENT_MEAN * VOLTAGE
-UTC_START = 0x0B6E_0000_0000_0000  # time64, early 2024
 TIME64_SECOND = 1 << 30
+UTC_START = 2191 * 86400 * TIME64_SECOND  # time64 for 2024-01-01T00:00:00Z
+UTC_START_STR = '2024-01-01T00:00:00+00:00'
 SERIAL_NUMBER = '000415'
 
 
@@ -90,11 +91,14 @@ def write_v1(path, sample_rate=SAMPLE_RATE, duration=DURATION):
     :return: path.
     """
     from joulescope.data_recorder import DataRecorder
+    from joulescope.v0.calibration import Calibration
     data = signals(sample_rate, duration)
     n = len(data['current'])
     zeros = np.zeros(n, dtype=np.float32)
     current_range = np.full(n, 4, dtype=np.float32)
-    recorder = DataRecorder(str(path))
+    calibration = Calibration()  # like a JS110 capture, which always has one
+    calibration.data = calibration.save(bytes([0] * 32))
+    recorder = DataRecorder(str(path), calibration=calibration)
     try:
         recorder.insert({
             'time': {

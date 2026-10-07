@@ -290,6 +290,12 @@ the trigger, detector, GPI region and timesync examples).
 6.22. Nine examples branch on the device model and none recognizes the JS320.
 This is missing support rather than a defect; handle it under 5.5.
 
+Found during characterization (4.2) of the second attempt:
+
+6.23. `jls_export_points.py` reports an exceeded `--duration` in time64
+ticks labeled as seconds, such as `Duration exceeded: 5368709120.0 >
+2147472910.0`.
+
 
 ## 7. Regression checklist
 
