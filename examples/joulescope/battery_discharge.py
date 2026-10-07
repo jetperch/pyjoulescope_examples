@@ -19,7 +19,6 @@
 
 from joulescope import scan
 import argparse
-import threading
 
 
 def get_parser():
@@ -31,40 +30,6 @@ def get_parser():
     return p
 
 
-class BatteryDischargeState:
-
-    def __init__(self, voltage_threshold):
-        self.voltage_threshold = voltage_threshold
-        self.lock = threading.Lock()
-        self.lock.acquire()
-        self._stat_first = None
-        self._stat_now = None
-
-    def statistics_callback(self, stats):
-        """The function called for each statistics.
-
-        :param stats: The statistics data structure.
-        """
-        if self._stat_first is None:
-            self._stat_first = stats
-        self._stat_now = stats
-        t = stats['time']['range']['value'][0]
-        i = stats['signals']['current']['µ']['value']
-        v = stats['signals']['voltage']['µ']['value']
-        p = stats['signals']['power']['µ']['value']
-        c = stats['accumulators']['charge']['value'] - self._stat_first['accumulators']['charge']['value']
-        e = stats['accumulators']['energy']['value'] - self._stat_first['accumulators']['energy']['value']
-        duration = t - self._stat_first['time']['range']['value'][0]
-        print(f'{duration:.1f}: current={i:.9f}, voltage={v:.3f}, power={p:.9f}, charge={c:.9f}, energy={e:.9f}')
-
-        if v <= self.voltage_threshold:
-            self.lock.release()
-
-    def wait_for_done(self):
-        while not self.lock.acquire(timeout=0.1):
-            continue
-
-
 def run():
     args = get_parser().parse_args()
     devices = scan(config='off')
@@ -72,14 +37,25 @@ def run():
         print('No Joulescope device found')
         return 1
     device = devices[0]
-    s = BatteryDischargeState(args.voltage)
-    device.statistics_callback_register(s.statistics_callback, 'sensor')
     device.open()
     try:
         device.parameter_set('i_range', 'auto')
         device.parameter_set('v_range', '15V')
-        s.wait_for_done()
-        device.parameter_set('i_range', 'off')
+        first = None
+        for stats in device.statistics_iter():  # on this thread, at 2 Hz
+            if first is None:
+                first = stats
+            t = stats['time']['range']['value'][0]
+            i = stats['signals']['current']['µ']['value']
+            v = stats['signals']['voltage']['µ']['value']
+            p = stats['signals']['power']['µ']['value']
+            c = stats['accumulators']['charge']['value'] - first['accumulators']['charge']['value']
+            e = stats['accumulators']['energy']['value'] - first['accumulators']['energy']['value']
+            duration = t - first['time']['range']['value'][0]
+            print(f'{duration:.1f}: current={i:.9f}, voltage={v:.3f}, power={p:.9f}, charge={c:.9f}, energy={e:.9f}')
+            if v <= args.voltage:
+                device.parameter_set('i_range', 'off')  # disconnect the battery
+                break
     except KeyboardInterrupt:
         print('Interrupted by user')
     finally:

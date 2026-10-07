@@ -55,7 +55,8 @@ Other changes:
   so a 1 second capture could record 0.9 seconds.
 * Removed calls to the deprecated joulescope Device.status() and the
   statistics callback source argument, which now print
-  DeprecationWarning: statistics.py and accumulators.py.
+  DeprecationWarning: statistics.py, accumulators.py and
+  battery_discharge.py.
 * jls_plot.py shows the plot unless given `--out`, the same as
   jls_energy_plot.py.  It previously did nothing without `--out` or
   `--show`.

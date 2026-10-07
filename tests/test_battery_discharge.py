@@ -59,6 +59,7 @@ def test_below_threshold(path, device_path, output_state):
     assert r.lines[0].startswith('0.0: ')
     for line in r.lines:
         assert LINE.match(line), r
+    assert 'Warning' not in r.stderr, r
     assert output_state() == 'off'  # discharge done: disconnect the battery
     output_state('on')
 
