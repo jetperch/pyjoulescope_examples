@@ -31,7 +31,7 @@ import time
 
 def run():
     # do not use config='auto' so that we can set io_voltage first.
-    with scan_require_one(name='Joulescope') as js:
+    with scan_require_one() as js:
         js.parameter_set('io_voltage', '3.3V')
         js.parameter_set('gpo0', '0')
         js.parameter_set('gpo1', '0')

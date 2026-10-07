@@ -79,8 +79,8 @@ Other changes:
 * Removed calls to the deprecated joulescope Device.status() and the
   statistics callback source argument, which now print
   DeprecationWarning: statistics.py, accumulators.py,
-  battery_discharge.py, statistics_logger.py and
-  statistics_with_trigger_to_jls.py.
+  battery_discharge.py, statistics_logger.py,
+  statistics_with_trigger_to_jls.py and the legacy examples.
 * jls_plot.py shows the plot unless given `--out`, the same as
   jls_energy_plot.py.  It previously did nothing without `--out` or
   `--show`.

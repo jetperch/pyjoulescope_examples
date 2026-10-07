@@ -53,7 +53,7 @@ def run():
         print('No Joulescope device found')
         return 1
     device = devices[0]
-    device.statistics_callback_register(statistics_callback, 'sensor')
+    device.statistics_callback_register(statistics_callback)
     device.open()
     try:
         device.parameter_set('i_range', 'auto')

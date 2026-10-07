@@ -32,5 +32,6 @@ def test_device(path, device_path):
     r = harness.run(path, visible=device_path)
     assert r.returncode == 0, r
     assert len(r.lines) == 17
+    assert 'DeprecationWarning' not in r.stderr, r
     for line in r.lines:
         assert int(line) in range(4)

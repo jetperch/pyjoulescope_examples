@@ -41,3 +41,4 @@ def test_device(path, device_path):
     for line in r.lines:
         assert LINE.match(line), r
     assert r.lines[0].startswith('0.0: ')
+    assert 'DeprecationWarning' not in r.stderr, r

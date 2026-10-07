@@ -35,3 +35,4 @@ def test_device(path, device_path):
     assert len(r.lines) == 1
     assert re.match(r'^Found \d+ out0 edges$', r.lines[0]), r
     assert r.plot_shown
+    assert 'DeprecationWarning' not in r.stderr, r

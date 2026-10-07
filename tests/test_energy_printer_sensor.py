@@ -36,3 +36,4 @@ def test_device(path, device_path):
     assert r.lines[1] == '0.000 J'
     for line in r.lines[1:]:
         assert ENERGY.match(line), r
+    assert 'DeprecationWarning' not in r.stderr, r

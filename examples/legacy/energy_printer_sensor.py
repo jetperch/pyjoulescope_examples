@@ -34,12 +34,11 @@ def run():
     signal.signal(signal.SIGINT, stop_fn)  # also quit on CTRL-C
 
     with scan_require_one(config='off') as device:
-        device.statistics_callback_register(statistics_queue.put, 'sensor')
+        device.statistics_callback_register(statistics_queue.put)
         device.parameter_set('i_range', 'auto')
         device.parameter_set('v_range', '15V')
         print('CTRL-C to exit')
         while True:
-            device.status()
             time.sleep(0.1)
             try:
                 data = statistics_queue.get(block=False)

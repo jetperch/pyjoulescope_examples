@@ -86,6 +86,7 @@ def test_display(path, device_path, tmp_path):
     csv = (tmp_path / 'out.csv').read_text().splitlines()
     assert csv[0] == '#' + COLUMNS
     assert csv[1:] == [lines[3], lines[6]]
+    assert 'DeprecationWarning' not in r.stderr, r
 
 
 def test_quiet(path, device_path, tmp_path):

@@ -177,7 +177,7 @@ def get_parser():
 
 
 def _current_time_str():
-    t = datetime.datetime.utcnow()
+    t = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     return t.isoformat()
 
 
@@ -251,7 +251,7 @@ class Capture:
             self._csv.write(f'#{COLUMNS}\n')
 
     def _construct_record_filename(self):
-        time_start = datetime.datetime.utcnow()
+        time_start = datetime.datetime.now(datetime.timezone.utc)
         timestamp_str = time_start.strftime('%Y%m%d_%H%M%S')
         return f'{timestamp_str}_{self._count + 1:04d}.jls'
 

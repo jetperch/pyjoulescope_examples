@@ -39,7 +39,7 @@ def run():
         _quit = True
 
     # do not use config='auto' so that we can set io_voltage first.
-    with scan_require_one(name='Joulescope') as js:
+    with scan_require_one() as js:
         # configure target Joulescope
         js.parameter_set('io_voltage', '3.3V')
         js.parameter_set('voltage_lsb', 'gpi0')
