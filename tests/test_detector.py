@@ -21,14 +21,13 @@ import re
 
 
 pytestmark = pytest.mark.parametrize('path', harness.paths('detector'))
-NOT_FOUND = 'No Joulescope JS220 found'
 DETECTED = re.compile(r'^detected [12]$')
 
 
 def test_help(path, tmp_path):
     r = harness.run(path, '--help', cwd=tmp_path)
     assert r.returncode == 0, r
-    for option in ['--frequency', '-f', '--duration', '--serial_number']:
+    for option in ['--frequency', '-f', '--duration', '--device', '-d']:
         assert option in r.stdout
 
 
@@ -40,7 +39,7 @@ def test_invalid(path):
 def test_no_device(path):
     r = harness.run(path, '--duration', 1)
     assert r.returncode == 1, r
-    assert r.lines == [NOT_FOUND]
+    assert len(r.lines) == 1 and 'not found' in r.lines[0], r
 
 
 def test_duration(path, device_path, request):
@@ -49,7 +48,7 @@ def test_duration(path, device_path, request):
     r = harness.run(path, '--duration', 1, visible=device_path)
     if device_path.model == 'js110':
         assert r.returncode == 1, r
-        assert r.lines == [NOT_FOUND]
+        assert len(r.lines) == 1 and 'not found' in r.lines[0], r
         return
     assert r.returncode == 0, r
     for line in r.lines:
@@ -64,7 +63,28 @@ def test_ctrl_c(path, device_path):
     assert r.returncode == 0, r
 
 
-def test_serial_number(path, device_path):
-    r = harness.run(path, '--duration', 0.5, '--serial_number', 'ZZZZ', visible=device_path)
+@pytest.mark.parametrize('option', ['--device', '-d', '--serial_number', '--serial-number'])
+def test_device_unknown(path, device_path, option):
+    r = harness.run(path, '--duration', 0.5, option, 'ZZZZ', visible=device_path)
     assert r.returncode == 1, r
-    assert r.lines == [NOT_FOUND]
+    assert r.lines == [f'Device "ZZZZ" not found in [{device_path!r}]']
+
+
+def test_device_js110(path, device_path):
+    if device_path.model != 'js110':
+        pytest.skip('only the JS110 is unsupported')
+    r = harness.run(path, '--duration', 0.5, '--device', device_path.serial_number, visible=device_path)
+    assert r.returncode == 1, r
+    assert len(r.lines) == 1 and r.lines[0].startswith(f'{device_path} is not supported'), r
+
+
+@pytest.mark.xfail(strict=True, reason='6.22 no JS320 support')
+def test_several_devices(path, several_devices):
+    supported = [p for p in several_devices.split(',') if '/js110/' not in p]
+    if len(supported) < 2:
+        pytest.skip('Needs two supported instruments')
+    r = harness.run(path, '--duration', 0.5, visible=several_devices)
+    assert r.returncode == 1, r
+    assert r.lines[-1] == 'Use "--device" to specify the desired device.'
+    r = harness.run(path, '--duration', 0.5, '-d', supported[0].split('/')[-1], visible=several_devices)
+    assert r.returncode == 0, r

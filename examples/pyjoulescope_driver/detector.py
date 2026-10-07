@@ -15,7 +15,7 @@
 
 """Perform real-time current analysis on streaming sample data."""
 
-from pyjoulescope_driver import Driver, time64
+from pyjoulescope_driver import Driver, device_filter, time64
 import argparse
 import logging
 import time
@@ -40,8 +40,9 @@ def get_parser():
                    type=time64.duration_to_seconds,
                    help='The capture duration in float seconds. '
                         + 'Add a suffix for other units: s=seconds, m=minutes, h=hours, d=days')
-    p.add_argument('--serial_number',
-                   help='The serial number of the Joulescope JS220 to use.')
+    p.add_argument('--device', '-d',
+                   help='The Joulescope JS220 to use, such as "000415".  Defaults to the only JS220.')
+    p.add_argument('--serial-number', '--serial_number', dest='device', help=argparse.SUPPRESS)
     return p
 
 
@@ -75,43 +76,34 @@ class DetectorRunner:
         ]
 
         with Driver() as d:
-            devices = d.device_paths()
-            devices = [device for device in devices if 'js220' in device]
-            if args.serial_number is not None:
-                devices = [p for p in devices if p.lower().endswith(args.serial_number.lower())]
-            if len(devices) != 1:
-                if len(devices) == 0:
-                    print('No Joulescope JS220 found')
-                    return 1
-                else:
-                    print('Multiple Joulescope JS220s found')
-                    return 1
-            device = devices[0]
-            d.open(device)
             try:
+                device_path = d.find_one_device(args.device or 'js220', brand='joulescope')
+            except device_filter.DeviceFilterError as ex:
+                print(ex)
+                if len(ex.matches) > 1:
+                    print('Use "--device" to specify the desired device.')
+                return 1
+            if device_path.model != 'js220':
+                print(f'{device_path} is not supported: use a JS220')
+                return 1
+            with d.open(device_path) as device:  # closing unsubscribes data_fn
                 # Configure the device, adjust as needed
-                d.publish(f'{device}/s/i/range/mode', 'auto')
-                d.publish(f'{device}/s/v/range/mode', 'auto')
-                d.publish(f'{device}/h/fs', frequency)
+                device.publish('s/i/range/mode', 'auto')
+                device.publish('s/v/range/mode', 'auto')
+                device.publish('h/fs', frequency)
 
                 # Subscribe to current data and start current data streaming
-                d.subscribe(f'{device}/s/i/!data', ['pub'], data_fn, timeout=0)
-                d.publish(f'{device}/s/i/ctrl', 1, timeout=0)
+                device.subscribe('s/i/!data', 'pub', data_fn)
+                device.publish('s/i/ctrl', 1)
 
-                # process incoming sample data indefinitely
+                # process incoming sample data
                 t_start = time.time()
-                while True:
-                    duration = time.time() - t_start
-                    if args.duration is not None and duration >= args.duration:
-                        break
-                    try:
+                try:
+                    while args.duration is None or time.time() - t_start < args.duration:
                         time.sleep(0.05)  # self._on_data may be called
-                    except KeyboardInterrupt:
-                        break  # normal CTRL-C exit
-            finally:
-                d.unsubscribe(f'{device}/s/i/!data', data_fn)
-                d.publish(f'{device}/s/i/ctrl', 0, timeout=0)
-                d.close(device)
+                except KeyboardInterrupt:
+                    pass  # normal CTRL-C exit
+                device.publish('s/i/ctrl', 0)
         return 0
 
 
