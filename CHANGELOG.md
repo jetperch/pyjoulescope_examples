@@ -24,6 +24,15 @@ This file contains the list of changes made to pyjoulescope_examples.
 
 2026 Oct [in progress]
 
+Breaking changes:
+
+* Requires Python 3.12 or newer, joulescope 1.6.1 or newer and
+  pyjoulescope_driver 2.5.0 or newer.
+
+Other changes:
+
+* requirements.txt now installs every package that the examples import:
+  pyjoulescope_driver, pyjls, openpyxl, psutil and, on Windows, pywin32.
 * Moved the examples from bin/ into examples/, grouped by package:
   joulescope, pyjoulescope_driver, pyjls and legacy.  Some examples have
   new names, such as scan.py for scan_by_serial_number.py.  The bin/

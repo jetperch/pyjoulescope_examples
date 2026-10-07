@@ -20,7 +20,7 @@ If you just want to use Joulescope, you can
 
 ### Verify Python installation
 
-Verify that Python 3.6+ is installed on your computer:
+Verify that Python 3.12 or newer is installed on your computer:
 
     python3 -VV
     
@@ -31,7 +31,7 @@ we recommend:
 
 *   Windows: download & install the [official Python release](https://www.python.org/downloads/).
 *   macOS: install [brew](https://brew.sh/), then "brew install python"
-*   Ubuntu 18.04 LTS: sudo apt install python3
+*   Ubuntu 24.04 LTS: sudo apt install python3 python3-venv
 
 
 ### Get this code

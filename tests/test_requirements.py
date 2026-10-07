@@ -18,7 +18,6 @@
 import ast
 import harness
 import os
-import pytest
 import re
 import sys
 
@@ -62,8 +61,6 @@ def _requirements():
     return rv
 
 
-@pytest.mark.xfail(strict=True, reason='6.20 requirements.txt omits pyjoulescope_driver, pyjls, '
-                                       'openpyxl and psutil')
 def test_requirements():
     missing = {k: v for k, v in _imports().items() if k.lower() not in _requirements()}
     assert not missing, missing
