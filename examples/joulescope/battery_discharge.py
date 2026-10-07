@@ -19,6 +19,7 @@
 
 from joulescope import scan
 import argparse
+import sys
 
 
 def get_parser():
@@ -63,4 +64,4 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
+    sys.exit(run())

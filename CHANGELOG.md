@@ -43,6 +43,7 @@ Fixes:
   time64 ticks).
 * statistics.py: display statistics at 2 Hz on a JS220, rather than at
   the rate that a previous program left.
+* battery_discharge.py: exit 1 when no Joulescope is connected (was 0).
 * accumulators.py --source sensor: stop after `--duration` (was ignored),
   and print the final summary on Ctrl-C (was a KeyboardInterrupt
   traceback).

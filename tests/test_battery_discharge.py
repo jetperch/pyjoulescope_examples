@@ -46,7 +46,6 @@ def test_no_device(path):
     assert r.lines == ['No Joulescope device found']
 
 
-@pytest.mark.xfail(strict=True, reason='6.25 exits 0 when no instrument is found')
 def test_no_device_exit_code(path):
     r = harness.run(path, 3.0)
     assert r.returncode == 1, r
