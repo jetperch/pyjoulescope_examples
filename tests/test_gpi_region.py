@@ -29,7 +29,7 @@ HEADER = ('device,signal,sample_id_start,sample_id_end,utc_start,utc_end,'
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
-    for option in ['--verbose', '-v', '--gpi', '--vref', '--serial_number']:
+    for option in ['--verbose', '-v', '--gpi', '--vref', '--device', '-d']:
         assert option in r.stdout
 
 
@@ -71,7 +71,19 @@ def test_verbose(path, device_path):
     ]
 
 
-def test_serial_number(path, device_path):
-    r = harness.run(path, '--serial_number', 'ZZZZ', visible=device_path)
+@pytest.mark.parametrize('option', ['--device', '-d', '--serial_number', '--serial-number'])
+def test_device_unknown(path, device_path, option):
+    r = harness.run(path, option, 'ZZZZ', visible=device_path)
     assert r.returncode == 1, r
     assert r.lines == ['Device not found']
+
+
+def test_device_spec(path, several_devices):
+    paths = several_devices.split(',')
+    target = [p for p in paths if '/js220/' in p]
+    if not target:
+        pytest.skip('needs a JS220')
+    target = target[0]
+    r = harness.run(path, '-v', '-d', target.split('/')[-1], visible=several_devices, interrupt_after=2)
+    assert r.returncode == 0, r
+    assert r.lines[1] == f"Found devices: ['{target}']"

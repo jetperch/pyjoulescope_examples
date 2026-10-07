@@ -50,8 +50,10 @@ def get_parser():
                    default='external',
                    choices=['external', '3v3'],
                    help='The Vref mode.')
-    p.add_argument('--serial_number',
-                   help='The serial number of the Joulescope to use.')
+    p.add_argument('--device', '-d',
+                   help='The Joulescopes to use, such as "js220", "000415" or "js220-000415". '
+                        + 'Defaults to all connected Joulescopes.')
+    p.add_argument('--serial-number', '--serial_number', dest='device', help=argparse.SUPPRESS)
     return p
 
 
@@ -308,10 +310,7 @@ def run():
         jsdrv.log_level = 'WARNING'
 
         verbose('Find the connected devices')
-        device_paths = sorted(jsdrv.device_paths())
-        if args.serial_number is not None:
-            serial_number_suffix = '/' + args.serial_number.lower()
-            device_paths = [p for p in device_paths if p.lower().endswith(serial_number_suffix)]
+        device_paths = jsdrv.find_devices(args.device, brand='joulescope')
         if len(device_paths) == 0:
             print('Device not found')
             return 1
