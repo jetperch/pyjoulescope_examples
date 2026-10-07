@@ -15,9 +15,10 @@
 # limitations under the License.
 
 
-from pyjoulescope_driver import Driver
+from pyjoulescope_driver import Driver, device_filter
 import argparse
 import numpy as np
+import sys
 import time
 
 
@@ -27,8 +28,9 @@ def get_parser():
     p.add_argument('--verbose', '-v',
                    action='store_true',
                    help='Display verbose information.')
-    p.add_argument('--serial_number',
-                   help='The serial number of the Joulescope to use.')
+    p.add_argument('--device', '-d',
+                   help='The Joulescope to use, such as "js220", "000415" or "js220-000415".')
+    p.add_argument('--serial-number', '--serial_number', dest='device', help=argparse.SUPPRESS)
     p.add_argument('--threshold1',
                    type=float,
                    default=1.0,
@@ -100,46 +102,44 @@ def _run():
             print(msg)
     
     with Driver() as jsdrv:
-        # find device
-        device_paths = sorted(jsdrv.device_paths())
-        if args.serial_number is not None:
-            serial_number_suffix = '/' + args.serial_number.lower()
-            device_paths = [p for p in device_paths if p.lower().endswith(serial_number_suffix)]
-        if len(device_paths) == 0:
-            print('Device not found')
+        try:
+            device_path = jsdrv.find_one_device(args.device, brand='joulescope')
+        except device_filter.DeviceFilterError as ex:
+            print(ex)
+            if len(ex.matches) > 1:
+                print('Use "--device" to specify the desired device.')
             return 1
-        elif len(device_paths) > 1:
-            print(f'Too many devices found: {device_paths}')
+        if device_path.model == 'js110':
+            print(f'{device_path} has no fuse: use a JS220 or JS320')
             return 1
-        device_path = device_paths[0]
-        
+
         def _on_fuse_engaged(topic, value):
+            # called from the driver thread, so publish with timeout=0
             if value:
                 print('Fuse engaged!')
                 # todo handle fuse engaged condition
                 # ... insert your code here ...
 
                 # clear fuse engaged
-                jsdrv.publish(topic, 0)
-        
+                jsdrv.publish(topic, 0, timeout=0)
+
         # Open the Joulescope and configure the fuse
-        jsdrv.open(device_path, mode='restore')
-        fuse_config = fuse_to_config(args.threshold1, args.threshold2, args.duration)
-        jsdrv.publish(f'{device_path}/s/fuse/0/en', 0)  # fuse disabled for configuration
-        jsdrv.publish(f'{device_path}/s/fuse/0/F', fuse_config['js220_fq'])
-        jsdrv.publish(f'{device_path}/s/fuse/0/K', fuse_config['js220_kq'])
-        jsdrv.subscribe(f'{device_path}/s/fuse/0/engaged', ['pub'], _on_fuse_engaged)
-        jsdrv.publish(f'{device_path}/s/fuse/0/en', 1)  # fuse enabled
-        
-        # Wait...
-        try:
-            while 1:
-                time.sleep(0.1)
-        except KeyboardInterrupt:
-            pass
-        finally:
-            jsdrv.close(device_path)
+        with jsdrv.open(device_path, mode='restore') as device:
+            fuse_config = fuse_to_config(args.threshold1, args.threshold2, args.duration)
+            device.publish('s/fuse/0/en', 0)  # fuse disabled for configuration
+            device.publish('s/fuse/0/F', fuse_config['js220_fq'])
+            device.publish('s/fuse/0/K', fuse_config['js220_kq'])
+            device.subscribe('s/fuse/0/engaged', 'pub', _on_fuse_engaged)
+            device.publish('s/fuse/0/en', 1)  # fuse enabled
+            verbose(f'Fuse enabled on {device_path}.  Press CTRL-C to exit.')
+
+            # Wait...
+            try:
+                while True:
+                    time.sleep(0.1)
+            except KeyboardInterrupt:
+                pass
 
 
 if __name__ == '__main__':
-    _run()
+    sys.exit(_run())

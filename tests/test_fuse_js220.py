@@ -41,7 +41,7 @@ def fuse_enabled(device_path):
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
-    for option in ['--verbose', '-v', '--serial_number', '--threshold1', '--threshold2',
+    for option in ['--verbose', '-v', '--device', '-d', '--threshold1', '--threshold2',
                    '--duration', '--start-threshold']:
         assert option in r.stdout
 
@@ -53,10 +53,9 @@ def test_invalid(path):
 
 def test_no_device(path):
     r = harness.run(path)
-    assert r.lines == ['Device not found']
+    assert r.lines == ['No Joulescope found']
 
 
-@pytest.mark.xfail(strict=True, reason='6.25 exits 0 when no instrument is found')
 def test_no_device_exit_code(path):
     r = harness.run(path)
     assert r.returncode == 1, r
@@ -67,7 +66,8 @@ def test_device(path, device_path, fuse_enabled):
     if device_path.model == 'js110':
         assert not r.interrupted, r
         assert r.returncode == 1, r
-        assert 'UNAVAILABLE' in r.stderr  # the JS110 has no fuse
+        assert not r.has_traceback, r
+        assert r.lines == [f'{device_path} has no fuse: use a JS220 or JS320']
         return
     assert r.interrupted and not r.killed, r
     assert r.returncode == 0, r
@@ -88,6 +88,7 @@ def test_fuse_engaged(path, device_path, fuse_enabled):
     assert not r.has_traceback, r
 
 
-def test_serial_number(path, device_path):
-    r = harness.run(path, '--serial_number', 'ZZZZ', visible=device_path)
-    assert r.lines == ['Device not found']
+@pytest.mark.parametrize('option', ['--device', '-d', '--serial_number', '--serial-number'])
+def test_device_unknown(path, device_path, option):
+    r = harness.run(path, option, 'ZZZZ', visible=device_path)
+    assert r.lines == [f'Device "ZZZZ" not found in [{device_path!r}]']
