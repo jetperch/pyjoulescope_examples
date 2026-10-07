@@ -89,7 +89,6 @@ def test_frequency_unsupported(path, device_path, tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.xfail(strict=True, reason='6.12 returns 0 after an unsupported --frequency')
 def test_frequency_unsupported_exit_code(path, device_path, tmp_path):
     r = harness.run(path, '-d', 1, '-f', 123, cwd=tmp_path, visible=device_path)
     assert r.returncode != 0, r

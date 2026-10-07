@@ -69,8 +69,7 @@ def run():
                     freqs = [f[2][0] for f in device.parameters('sampling_frequency').options]
                     print(f'Unsupported frequency selected: {args.frequency}')
                     print(f'Supported frequencies = {freqs}')
-                    quit_ = True
-                    break
+                    return 1
             fname = f'{filename_base}_{device.device_serial_number}{filename_ext}'
             device.open()
             recorder = JlsWriter(device, fname)
