@@ -46,7 +46,7 @@ def _xfail_js320(request, device_path):
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
-    for option in ['--verbose', '-v', '--duration', '-d', '--frequency', '-f', '--serial_number',
+    for option in ['--verbose', '-v', '--duration', '-d', '--frequency', '-f', '--device',
                    '--open', '-o', '--signals', '--no-progress']:
         assert option in r.stdout
 
@@ -111,7 +111,7 @@ def test_verbose(path, device_path, request):
 
 def test_options(path, device_path):
     # "--open restore" skips the model check, so this also runs on the JS320.
-    r = harness.run(path, '-d', 0.3, '--no-progress', '--serial_number', device_path.serial_number,
+    r = harness.run(path, '-d', 0.3, '--no-progress', '--device', device_path.serial_number,
                     '-f', 100000, '--open', 'restore', visible=device_path, timeout=10)
     assert r.returncode == 0, r
     data = _parse(r.lines)
@@ -119,10 +119,22 @@ def test_options(path, device_path):
         assert abs(_samples(value['msg']) - 30000) <= 300
 
 
-def test_serial_number_unknown(path, device_path):
-    r = harness.run(path, '--serial_number', 'ZZZZ', visible=device_path)
+@pytest.mark.parametrize('option', ['--device', '--serial_number', '--serial-number'])
+def test_device_unknown(path, device_path, option):
+    r = harness.run(path, option, 'ZZZZ', visible=device_path)
     assert r.returncode == 1, r
     assert r.lines == ['Device not found']
+
+
+@pytest.mark.parametrize('option', ['--device', '--serial_number', '--serial-number'])
+def test_device_spec(path, several_devices, option):
+    device_path = several_devices.split(',')[0]
+    model = device_path.split('/')[1]
+    for spec in [device_path.split('/')[2].lower(), f'{model}-{device_path.split("/")[2]}']:
+        r = harness.run(path, '-d', 0.2, '--no-progress', option, spec, visible=several_devices,
+                        timeout=15)
+        assert r.returncode == 0, r
+        assert sorted(_parse(r.lines)) == [(device_path, 'current'), (device_path, 'voltage')]
 
 
 @pytest.mark.xfail(strict=True, reason='6.28 waits forever for an unavailable signal')

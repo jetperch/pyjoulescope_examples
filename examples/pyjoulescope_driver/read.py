@@ -79,8 +79,10 @@ def get_parser():
     p.add_argument('--frequency', '-f',
                    type=int,
                    help='The sampling frequency in Hz.')
-    p.add_argument('--serial_number',
-                   help='The serial number of the Joulescope for this capture.')
+    p.add_argument('--device',
+                   help='The Joulescopes to use, such as "js220", "000415" or "js220-000415". '
+                        + 'Defaults to all connected Joulescopes.')
+    p.add_argument('--serial-number', '--serial_number', dest='device', help=argparse.SUPPRESS)
     p.add_argument('--open', '-o',
                    choices=['defaults', 'restore'],
                    default='defaults',
@@ -262,10 +264,7 @@ def run():
         jsdrv.log_level = 'WARNING'
 
         verbose('Find the connected devices')
-        device_paths = sorted(jsdrv.device_paths())
-        if args.serial_number is not None:
-            serial_number_suffix = '/' + args.serial_number.lower()
-            device_paths = [p for p in device_paths if p.lower().endswith(serial_number_suffix)]
+        device_paths = jsdrv.find_devices(args.device, brand='joulescope')
         if len(device_paths) == 0:
             print('Device not found')
             return 1
