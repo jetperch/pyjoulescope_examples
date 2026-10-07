@@ -41,6 +41,8 @@ Breaking changes:
 
 Fixes:
 
+* windowed_accum.py: runs with joulescope 1.6 (was ImportError for
+  stats_to_api).
 * statistics_with_trigger_to_jls.py: record the instrument model in the
   JLS file (was JS110 on every model), record on a JS110 (was KeyError),
   and record 120 seconds without `--duration` (was TypeError).

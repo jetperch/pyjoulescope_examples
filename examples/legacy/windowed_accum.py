@@ -21,7 +21,6 @@ Caution: the windows must be shorter than the stream buffer duration.
 """
 
 from joulescope import scan_require_one
-from joulescope.stream_buffer import stats_to_api
 import argparse
 import logging
 import numpy as np
@@ -67,13 +66,10 @@ class WindowDetect:
         d_id = end_id - start_id
         if d_id < SAMPLE_COUNT_MIN:
             return  # too short, debounced
-        s = stream_buffer.statistics_get(start_id, end_id)[0]
-        t_start = start_id / stream_buffer.output_sampling_frequency
-        t_end = end_id / stream_buffer.output_sampling_frequency
-        s = stats_to_api(s, t_start, t_end)
-        duration = s['time']['delta']['value']
-        charge = s['signals']['current']['∫']['value']
-        energy = s['signals']['power']['∫']['value']
+        s = stream_buffer.statistics_get(start_id, end_id)[0]  # current, voltage, power, ...
+        duration = d_id / stream_buffer.output_sampling_frequency
+        charge = s[0]['mean'] * duration
+        energy = s[2]['mean'] * duration
         timestamp = datetime.datetime.utcfromtimestamp(self.timestamp)
         timestamp_str = timestamp.isoformat()
         line = f'{timestamp_str},{duration:.6f},{charge},{energy}'

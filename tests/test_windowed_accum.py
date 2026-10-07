@@ -20,16 +20,8 @@ import pytest
 
 
 pytestmark = pytest.mark.parametrize('path', harness.paths('windowed_accum'))
-REASON = '6.19 imports joulescope.stream_buffer.stats_to_api, which joulescope 1.6 removed'
 
 
-def test_import_fails(path):
-    r = harness.run(path, '--help')
-    assert r.returncode == 1, r
-    assert 'stats_to_api' in r.stderr
-
-
-@pytest.mark.xfail(strict=True, reason=REASON)
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
@@ -37,7 +29,6 @@ def test_help(path):
         assert option in r.stdout
 
 
-@pytest.mark.xfail(strict=True, reason=REASON)
 def test_device(path, device_path, tmp_path):
     r = harness.run(path, '-o', 'out.csv', cwd=tmp_path, visible=device_path, interrupt_after=3)
     assert r.interrupted and not r.killed, r
