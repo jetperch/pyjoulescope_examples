@@ -75,6 +75,19 @@ def test_device(path, device_path, fuse_enabled):
     assert fuse_enabled() == 1  # stays armed after exit
 
 
+def test_fuse_engaged(path, device_path, fuse_enabled):
+    if device_path.model == 'js110':
+        pytest.skip('the JS110 has no fuse')
+    # Thresholds below the bench load trip the fuse.
+    r = harness.run(path, '--threshold1', 0.0002, '--threshold2', 0.0004, '--duration', 0.05,
+                    visible=device_path, interrupt_after=4)
+    if 'Fuse engaged!' not in r.stdout:
+        pytest.skip(f'{device_path} has no load above 0.4 mA to trip the fuse')
+    assert r.interrupted and not r.killed, r
+    assert r.returncode == 0, r
+    assert not r.has_traceback, r
+
+
 def test_serial_number(path, device_path):
     r = harness.run(path, '--serial_number', 'ZZZZ', visible=device_path)
     assert r.lines == ['Device not found']

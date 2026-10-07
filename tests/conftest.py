@@ -75,7 +75,7 @@ _RESET_TOPICS = [
     's/i/lsb_src', 's/v/lsb_src', 's/i/range/mode', 's/i/range/pre', 's/i/range/post',
     's/i/range/win', 's/i/range/win_sz',
     # JS220 and JS320
-    'c/trigger/dir', 'c/gpio/vref', 's/fuse/0/en',
+    'c/trigger/dir', 'c/gpio/vref', 's/fuse/0/en', 's/fuse/0/engaged',
 ]
 
 
