@@ -43,18 +43,18 @@ def test_duration_invalid(path):
     assert 'argument --duration' in r.stderr
 
 
-def test_no_device_waits(path, tmp_path):
-    r = harness.run(path, '-d', 1, cwd=tmp_path, interrupt_after=3)
-    assert r.interrupted and not r.killed, r
-    assert r.lines == [START]
-    assert list(tmp_path.iterdir()) == []
-
-
-@pytest.mark.xfail(strict=True, reason='6.12 waits forever with no instrument')
-def test_no_device_exits(path, tmp_path):
+def test_no_device(path, tmp_path):
     r = harness.run(path, '-d', 1, cwd=tmp_path, timeout=10)
     assert not r.interrupted, r
     assert r.returncode == 1, r
+    assert r.lines == ['No Joulescope found']
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_out_invalid(path, device_path, tmp_path):
+    r = harness.run(path, '-d', 1, '-o', 'missing_dir/out.jls', cwd=tmp_path, visible=device_path)
+    assert r.returncode == 1, r
+    assert 'missing_dir' in r.stderr
 
 
 def test_device(path, device_path, tmp_path):

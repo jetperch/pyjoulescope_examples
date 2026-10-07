@@ -54,6 +54,9 @@ def run():
     filename_base, filename_ext = os.path.splitext(args.out)
     signal.signal(signal.SIGINT, do_quit)
     devices = scan(config='auto')
+    if not devices:
+        print('No Joulescope found')
+        return 1
     items = []
 
     try:
@@ -95,4 +98,4 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
+    sys.exit(run())
