@@ -44,10 +44,7 @@ def test_no_device_waits(path, tmp_path):
     assert (tmp_path / 'out.csv').read_text() == ''
 
 
-def test_device(path, device_path, tmp_path, request):
-    if device_path.model != 'js220':
-        request.applymarker(pytest.mark.xfail(
-            strict=True, reason='6.29 raises on exit after skipping an unsupported instrument'))
+def test_device(path, device_path, tmp_path):
     r = harness.run(path, '-v', '--vref', 'external', cwd=tmp_path, visible=device_path,
                     interrupt_after=2)
     assert r.interrupted and not r.killed, r

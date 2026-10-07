@@ -120,9 +120,11 @@ def run():
         verbose(f'Found devices: {device_paths}')
 
         verbose('Open and configure each device')
+        opened = []
         for device_path in device_paths:
             if 'js220' in device_path:
                 jsdrv.open(device_path, mode='defaults')
+                opened.append(device_path)
                 jsdrv.publish(f'{device_path}/s/i/range/mode', 'auto')
                 jsdrv.publish(f'{device_path}/s/i/ctrl', 'on')
                 jsdrv.publish(f'{device_path}/s/v/ctrl', 'on')
@@ -141,7 +143,7 @@ def run():
             pass
         finally:
             verbose('Closing')
-            for device_path in device_paths:
+            for device_path in opened:
                 jsdrv.publish(f'{device_path}/s/gpi/0/ctrl', 'off')
                 jsdrv.publish(f'{device_path}/s/i/ctrl', 'off')
                 jsdrv.publish(f'{device_path}/s/v/ctrl', 'off')

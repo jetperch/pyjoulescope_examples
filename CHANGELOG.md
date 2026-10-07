@@ -56,6 +56,8 @@ Breaking changes:
 
 Fixes:
 
+* timesync.py: exit cleanly after skipping an unsupported instrument (was
+  RuntimeError on exit).
 * trigger_out.py (was trigger_host_pyjoulescope_driver.py): detect on the
   `--signal` given, which is now one of i, v or p.  It always used i.  It
   also starts with the trigger output low, which it set high.

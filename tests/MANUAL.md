@@ -59,7 +59,7 @@ Wire OUT0 to IN0 and OUT1 to IN1, and select 3.3 V I/O.
 | `windowed_accum.py` | one CSV row per IN0 high window |
 | `gpi_region.py --gpi 0 --vref 3v3` | one CSV row per IN0 high region |
 | `trigger_host_pyjoulescope_driver.py` | with a load stepping above 1 A then below 0.1 A, TRIGGER OUT goes high then low, and starts low (6.14) |
-| `timesync.py --out ts.csv` | with two or more instruments sharing one GPI0 signal, one row per edge with offsets in microseconds |
+| `timesync.py --out ts.csv` | with two or more instruments sharing one GPI0 signal, a header line, then one row per edge with offsets in microseconds (6.32) |
 
 
 ## Load

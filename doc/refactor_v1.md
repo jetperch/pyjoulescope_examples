@@ -331,6 +331,11 @@ rounds its buffer up to 10,000 samples and fills it, and these instruments
 keep streaming briefly after the duration.  This is separate from 6.7, which
 returned zeros after an early stop, such as on Ctrl-C.
 
+6.32. `timesync.py --out` writes its CSV header without a newline, so the
+header and the first row share a line.  Showing it needs two instruments
+that share a GPI0 signal, so per 2.7 it waits for a bench with that wiring.
+See tests/MANUAL.md.
+
 No black-box test can show 6.10 (`battery_discharge.py` releasing its lock
 twice): the example stops after the first reading below the threshold, before
 a second can arrive.  Per 2.7 it is not fixed on its own; the refactor
