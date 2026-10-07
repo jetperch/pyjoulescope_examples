@@ -62,13 +62,11 @@ class Monitor:
     def __init__(self, driver, device_prefix):
         self._driver = driver
         self._device_prefix = device_prefix
-        self._fs = 2_000_000 if 'JS110' in device_prefix else 1_000_000  # Hz
+        self._fs = 2_000_000 if device_prefix.model == 'js110' else 1_000_000  # Hz
         self._summary_fs = 50  # Hz
         self._summary_sample_id = 0
         self._summary_sample_id_offset = 0
         self._on_statistic_fn = self._on_statistic
-        self._i_info = None
-        self._v_info = None
         self._end_count = 0
         self._end_count_threshold = 2 * self._summary_fs  # 2 seconds
         self._state = self.ST_SCAN
@@ -78,18 +76,6 @@ class Monitor:
         self._summary_xlsx = None
         self._summary_xlsx_filename = None
         self._stat_buffer = []
-
-        # Configure memory buffer for full-rate sample data
-        self._rsp_topic = 'm/mem/001/!rsp'
-        driver.publish('m/@/!add', 1)
-        driver.publish('m/001/a/!add', 1)
-        driver.publish('m/001/a/!add', 2)
-        driver.publish('m/001/g/size', 500_000_000)
-        driver.publish('m/001/s/001/topic', f'{device_prefix}/s/i/!data')
-        driver.publish('m/001/s/002/topic', f'{device_prefix}/s/v/!data')
-        driver.subscribe('m/001/s/001/info', ['pub'], self._on_buffer_i_info)
-        driver.subscribe('m/001/s/002/info', ['pub'], self._on_buffer_v_info)
-        driver.subscribe(self._rsp_topic, ['pub'], self._on_mem_rsp)
 
     def _open_jls(self, filename, fs):
         """Open a JLS v2 file for the connected Joulescope.
@@ -128,14 +114,6 @@ class Monitor:
             units='V',
         )
         return wr
-
-    def _on_buffer_i_info(self, topic, value):
-        # memory buffer contents for current
-        self._i_info = value
-
-    def _on_buffer_v_info(self, topic, value):
-        # memory buffer contents for voltage
-        self._v_info = value
 
     def _on_statistic(self, topic, value):
         """Callback for 50 Hz statistics."""
@@ -210,9 +188,6 @@ class Monitor:
             self._summary_xlsx.save(self._summary_xlsx_filename)
             self._summary_xlsx = None
 
-    def _on_mem_rsp(self, topic, value):
-        pass
-
     def device_publish(self, topic, value):
         self._driver.publish(f'{self._device_prefix}/{topic}', value)
 
@@ -220,21 +195,23 @@ class Monitor:
         self._driver.open(self._device_prefix)
         self.device_publish('h/fs', self._fs)
         self.device_publish('s/stats/scnt', self._fs // self._summary_fs)
-        if 'js110' in self._device_prefix:
+        if self._device_prefix.model == 'js110':
             self.device_publish('s/i/range/select', 'auto')
             self.device_publish('s/v/range/select', '15 V')
-        else:
+            # the JS110 computes these statistics on the host from the sample streams
+            self.device_publish('s/i/ctrl', 1)
+            self.device_publish('s/v/ctrl', 1)
+        else:  # the JS220 and JS320 compute statistics on the instrument
             self.device_publish('s/i/range/mode', 'auto')
             self.device_publish('s/v/range/select', '15 V')
             self.device_publish('s/v/range/mode', 'manual')  # as of 2023-03-24, auto not working well
-        self.device_publish('s/i/ctrl', 1)
-        self.device_publish('s/v/ctrl', 1)
         self.device_publish('s/stats/ctrl', 1)
         self._driver.subscribe(f'{self._device_prefix}/s/stats/value', ['pub'], self._on_statistic_fn)
 
     def close(self):
-        self.device_publish('s/i/ctrl', 0)
-        self.device_publish('s/v/ctrl', 0)
+        if self._device_prefix.model == 'js110':
+            self.device_publish('s/i/ctrl', 0)
+            self.device_publish('s/v/ctrl', 0)
         self.device_publish('s/stats/ctrl', 0)
         self._driver.unsubscribe(f'{self._device_prefix}/s/stats/value', self._on_statistic_fn)
         self._driver.close(self._device_prefix)

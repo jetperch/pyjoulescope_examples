@@ -57,8 +57,10 @@ Breaking changes:
 
 Fixes:
 
-* monitor.py: write voltage in the voltage columns (was current), and exit
-  1 when no Joulescope is connected (was 0).
+* monitor.py: write voltage in the voltage columns (was current), exit 1
+  when no Joulescope is connected (was 0), record 50 Hz statistics on a
+  JS110 (was 100 Hz), and no longer allocate an unused 500 MB buffer or
+  stream samples that it never reads on a JS220 or JS320.
 * timesync.py: exit cleanly after skipping an unsupported instrument (was
   RuntimeError on exit).
 * trigger_out.py (was trigger_host_pyjoulescope_driver.py): detect on the
