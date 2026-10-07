@@ -59,18 +59,52 @@ def device_path(request):
     for p, err in _bench_devices():
         if p == path and err is not None:
             pytest.fail(err)
+    _quiesce(path)
     yield path
     _quiesce(path)
 
 
+# The settings that the examples change, which _quiesce returns to their
+# metadata defaults.  The instruments keep settings between programs.
+_RESET_TOPICS = [
+    'h/fs', 's/i/ctrl', 's/v/ctrl', 's/p/ctrl', 's/stats/ctrl', 's/stats/scnt',
+    's/gpi/0/ctrl', 's/gpi/1/ctrl', 's/gpi/2/ctrl', 's/gpi/3/ctrl', 's/gpi/7/ctrl',
+    's/v/range/mode', 's/v/range/select',
+    # JS110
+    's/sstats/ctrl', 's/extio/voltage', 's/gpo/0/value', 's/gpo/1/value',
+    's/i/lsb_src', 's/v/lsb_src', 's/i/range/mode', 's/i/range/pre', 's/i/range/post',
+    's/i/range/win', 's/i/range/win_sz',
+    # JS220 and JS320
+    'c/trigger/dir', 'c/gpio/vref', 's/fuse/0/en',
+]
+
+
 def _quiesce(path):
-    """Prove the example released the instrument, and leave it usable."""
+    """Prove the example released the instrument, and reset it.
+
+    Return the settings that the examples change to their defaults, then
+    turn on the output to the device under test with automatic ranging.
+    """
     from pyjoulescope_driver import Driver
+    meta = {}
+
+    def on_metadata(topic, value):
+        meta[topic[len(path) + 1:-1]] = value  # metadata topics end with "$"
+
     with Driver() as d:
         if path not in d.device_paths():
             pytest.fail(f'{path} is no longer connected')
-        with d.open(path, mode='restore'):  # raises if the example still holds it
-            pass
+        with d.open(path, mode='restore') as device:  # raises if the example still holds it
+            with d.subscribe(path, 'metadata_rsp_retain', on_metadata):
+                pass
+            for topic in _RESET_TOPICS:
+                if topic in meta and 'default' in meta[topic]:
+                    device.publish(topic, meta[topic]['default'])
+            if path.model == 'js110':
+                device.publish('s/i/range/select', 'auto')
+            else:
+                device.publish('s/gpo/+/!clr', 0x83)  # trigger_out, gpo1, gpo0
+                device.publish('s/i/range/mode', 'auto')
 
 
 @pytest.fixture
@@ -108,6 +142,16 @@ def output_state(device_path):
                     device.publish(topic, 'auto' if value == 'on' else 'off')
                 return 'off' if device.query(topic) == 0 else 'on'
     return fn
+
+
+@pytest.fixture
+def statistics_100hz(device_path):
+    """Leave the instrument at 100 Hz statistics, as measure.py does."""
+    from pyjoulescope_driver import Driver
+    with Driver() as d:
+        with d.open(device_path, mode='restore') as device:
+            device.publish('s/stats/scnt', harness.SAMPLE_RATE[device_path.model] // 100)
+    return device_path
 
 
 @pytest.fixture

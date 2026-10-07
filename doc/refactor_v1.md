@@ -319,6 +319,12 @@ skips every instrument as unsupported.
 6.29. `timesync.py` raises on exit after it skips an unsupported instrument,
 because it closes every device, including those it never opened.
 
+6.30. On a JS220, `statistics.py`, `statistics_logger.py`,
+`battery_discharge.py` and `statistics_v1.py` print at whatever statistics
+rate the previous program left, such as 100 Hz after `measure.py`, instead
+of 2 Hz.  They scan with `config='off'`, which does not configure the
+instrument, and never set `reduction_frequency`.  See U.5.
+
 No black-box test can show 6.10 (`battery_discharge.py` releasing its lock
 twice): the example stops after the first reading below the threshold, before
 a second can arrive.  Per 2.7 it is not fixed on its own; the refactor
@@ -345,6 +351,10 @@ violation (0xC0000005) while finalizing.  Seen twice on Windows: `monitor.py`
 on a JS110 after Ctrl-C (1 of 14 runs), and a test process that created a
 second `Driver` to reopen an instrument (1 of 31 runs).  Not yet
 reproducible on demand.
+
+U.5. joulescope 1.6.1 `scan(config='off')` keeps the statistics rate that the
+instrument already has on a JS220, but sets 2 Hz on a JS320.  The models
+should agree.
 
 
 ## 7. Regression checklist
