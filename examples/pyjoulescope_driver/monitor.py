@@ -31,6 +31,7 @@ See https://github.com/jetperch/joulescope_driver
 from pyjls import Writer, SignalType, DataType
 from pyjoulescope_driver import Driver
 import openpyxl
+import sys
 import time
 import numpy as np
 import datetime
@@ -262,4 +263,4 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
+    sys.exit(run())

@@ -40,7 +40,6 @@ def test_no_device(path, tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-@pytest.mark.xfail(strict=True, reason='6.25 exits 0 when no instrument is found')
 def test_no_device_exit_code(path, tmp_path):
     r = harness.run(path, cwd=tmp_path)
     assert r.returncode == 1, r
