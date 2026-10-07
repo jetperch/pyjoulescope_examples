@@ -56,6 +56,8 @@ Breaking changes:
 
 Fixes:
 
+* trigger_out.py (was trigger_host_pyjoulescope_driver.py): detect on the
+  `--signal` given, which is now one of i, v or p.  It always used i.
 * fuse.py (was fuse_js220.py): exit 1 when no Joulescope is connected (was
   0), and explain that the JS110 has no fuse (was RuntimeError).
 * dut_power.py: exit 1 after the usage message when given no argument

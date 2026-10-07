@@ -37,7 +37,8 @@ def get_parser():
     p.add_argument('--serial-number', '--serial_number', dest='device', help=argparse.SUPPRESS)
     p.add_argument('--signal',
                    default='i',
-                   help='The signal for detection.')
+                   choices=['i', 'v', 'p'],
+                   help='The signal for detection: i=current, v=voltage, p=power.')
     p.add_argument('--start-duration',
                    type=float,
                    default=0.001,
@@ -166,7 +167,6 @@ def run():
 
         verbose('Open and configure each device')
         handlers = []
-        signal = 'i'
         for device_path in device_paths:
             if device_path.model != 'js110':  # JS220 and JS320
                 jsdrv.open(device_path, mode='defaults')
@@ -176,7 +176,8 @@ def run():
                 jsdrv.publish(f'{device_path}/s/gpo/+/!set', 1 << 7)
                 start_condition = _DetectDuration(args.start_duration, lambda x: x > args.start_threshold)
                 stop_condition = _DetectDuration(args.stop_duration, lambda x: x < args.stop_threshold)
-                handler = DeviceHandler(jsdrv, device_path, signal, start_condition, stop_condition, verbose)
+                handler = DeviceHandler(jsdrv, device_path, args.signal, start_condition, stop_condition,
+                                        verbose)
                 handlers.append(handler)
             else:
                 print(f'Unsupported device {device_path}: ignore')

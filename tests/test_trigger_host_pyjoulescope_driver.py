@@ -35,10 +35,19 @@ def test_invalid(path):
     assert r.returncode == 2, r
 
 
-@pytest.mark.xfail(strict=True, reason='6.14 ignores --signal')
 def test_invalid_signal(path):
     r = harness.run(path, '--signal', 'x')
     assert r.returncode == 2, r
+
+
+@pytest.mark.parametrize('signal', ['v', 'p'])
+def test_signal(path, device_path, signal):
+    if device_path.model == 'js110':
+        pytest.skip('the JS110 has no trigger output')
+    r = harness.run(path, '--signal', signal, visible=device_path, interrupt_after=2)
+    assert r.interrupted and not r.killed, r
+    assert r.returncode == 0, r
+    assert not r.has_traceback, r
 
 
 def test_no_device(path):
