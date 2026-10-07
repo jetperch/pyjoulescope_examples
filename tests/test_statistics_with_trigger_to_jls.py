@@ -84,7 +84,6 @@ def test_trigger_source_model(path, device_path, tmp_path):
         assert r.sources[1].model.lower() == device_path.model
 
 
-@pytest.mark.xfail(strict=True, reason='6.15 raises TypeError when it triggers without --duration')
 def test_trigger_without_duration(path, device_path, tmp_path):
     r = _run_trigger(path, device_path, tmp_path)
     assert 'Traceback' not in r.stderr, r

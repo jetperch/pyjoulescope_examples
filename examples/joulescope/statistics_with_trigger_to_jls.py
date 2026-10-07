@@ -109,8 +109,10 @@ def get_parser():
         description='Capture Joulescope statistics and trigger to capture full-rate data to JLS v2.')
     p.add_argument('--duration',
                    type=duration_to_seconds,
+                   default=120.0,
                    help='The full-rate capture duration in float seconds. '
-                   + 'Add a suffix for other units: s=seconds, m=minutes, h=hours, d=days')
+                   + 'Add a suffix for other units: s=seconds, m=minutes, h=hours, d=days. '
+                   + 'Defaults to 120 seconds.')
     p.add_argument('--signals',
                    default='current,voltage',
                    help='The comma-separated list of signals to capture which include current, voltage, power. '
