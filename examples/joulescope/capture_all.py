@@ -15,10 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Capture samples to JLS files for all connected Joulescopes."""
+"""Capture samples to JLS v2 files for all connected Joulescopes.  See https://github.com/jetperch/jls"""
 
-from joulescope import scan
-from joulescope.data_recorder import DataRecorder
+from joulescope import scan, JlsWriter
 import argparse
 import os
 import sys
@@ -71,8 +70,8 @@ def run():
                     break
             fname = f'{filename_base}_{device.device_serial_number}{filename_ext}'
             device.open()
-            recorder = DataRecorder(fname,
-                                    calibration=device.calibration)
+            recorder = JlsWriter(device, fname)
+            recorder.open()
             items.append([device, recorder])
             device.stream_process_register(recorder)
 

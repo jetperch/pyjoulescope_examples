@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import harness
+import jls_files
 import pytest
 
 
@@ -21,15 +22,12 @@ pytestmark = pytest.mark.parametrize('path', harness.paths('capture_all'))
 START = 'Capturing data: type CTRL-C to stop'
 
 
-def _v1(path):
-    """Return (sampling_frequency, sample_count) for a JLS v1 file."""
-    from joulescope.data_recorder import DataReader
-    r = DataReader().open(str(path))
-    try:
-        s0, s1 = r.sample_id_range
-        return r.sampling_frequency, s1 - s0
-    finally:
-        r.close()
+def _v2(path):
+    """Return (sampling_frequency, sample_count) for the JLS v2 file."""
+    s = jls_files.summary(path)
+    assert sorted(s) == ['current', 'voltage']
+    assert s['current']['length'] == s['voltage']['length']
+    return s['current']['sample_rate'], s['current']['length']
 
 
 def test_help(path):
@@ -65,7 +63,7 @@ def test_device(path, device_path, tmp_path):
     assert r.lines == [START]
     files = sorted(f.name for f in tmp_path.iterdir())
     assert files == [f'out_{device_path.serial_number}.jls']
-    fs, n = _v1(tmp_path / files[0])
+    fs, n = _v2(tmp_path / files[0])
     assert fs == harness.SAMPLE_RATE[device_path.model]
     assert 0.8 * fs <= n <= 1.5 * fs
 
@@ -80,7 +78,7 @@ def test_ctrl_c(path, device_path, tmp_path):
     r = harness.run(path, cwd=tmp_path, visible=device_path, interrupt_after=2)
     assert r.interrupted and not r.killed, r
     assert r.returncode == 0, r
-    fs, n = _v1(tmp_path / f'out_{device_path.serial_number}.jls')
+    fs, n = _v2(tmp_path / f'out_{device_path.serial_number}.jls')
     assert n > 0.5 * fs
 
 
@@ -97,12 +95,11 @@ def test_frequency_unsupported_exit_code(path, device_path, tmp_path):
     assert r.returncode != 0, r
 
 
-@pytest.mark.xfail(strict=True, reason='6.26 records nothing at low --frequency')
 def test_frequency(path, device_path, tmp_path):
     r = harness.run(path, '-d', 1, '-f', 1000, cwd=tmp_path, visible=device_path)
     assert r.returncode == 0, r
     assert 'Traceback' not in r.stderr, r
-    fs, n = _v1(tmp_path / f'out_{device_path.serial_number}.jls')
+    fs, n = _v2(tmp_path / f'out_{device_path.serial_number}.jls')
     assert fs == 1000
     assert 800 <= n <= 1500
 

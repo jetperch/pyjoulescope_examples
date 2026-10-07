@@ -28,6 +28,10 @@ Breaking changes:
 
 * Requires Python 3.12 or newer, joulescope 1.6.1 or newer and
   pyjoulescope_driver 2.5.0 or newer.
+* capture_all.py records JLS v2 files instead of JLS v1, with the same
+  file names.  Read them with pyjls, or plot them with
+  examples/pyjls/jls_plot.py.  This also records at low `--frequency`
+  values, such as 1000, which recorded nothing before.
 * scan.py (was scan_by_serial_number.py) lists the connected Joulescopes
   when given no argument, instead of prompting on stdin.  Its argument is
   now a device specification: a serial number as before, matched without
