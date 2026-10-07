@@ -215,7 +215,7 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
 
         signal_state['close'] = close
         jsdrv.subscribe(data_topic, ['pub'], data_fn)
-        jsdrv.publish(ctrl_topic, 1, timeout=0)
+        jsdrv.publish(ctrl_topic, 1)  # blocking, so it raises if the signal is unavailable
 
     def time_info():
         utc_entries = [value.get('utc_range') for value in read_state.values()]
@@ -291,6 +291,9 @@ def run():
         verbose('Perform the sample read')
         try:
             data = read(jsdrv, signals_full, duration=args.duration, on_progress=args.no_progress)
+        except RuntimeError as ex:
+            print(ex)
+            return 1
         finally:
             for device_path in device_paths:
                 jsdrv.close(device_path)

@@ -128,13 +128,14 @@ def test_device_spec(path, several_devices, option):
         assert sorted(_parse(r.lines)) == [(device_path, 'current'), (device_path, 'voltage')]
 
 
-@pytest.mark.xfail(strict=True, reason='6.28 waits forever for an unavailable signal')
 def test_unavailable_signal(path, device_path):
     if device_path.model != 'js110':
         pytest.skip('trigger_in is only unavailable on the JS110')
     r = harness.run(path, '-d', 0.2, '--signals', 'i,T', visible=device_path, timeout=10)
     assert not r.interrupted, r
-    assert r.returncode != 0, r
+    assert r.returncode == 1, r
+    assert not r.has_traceback, r
+    assert 's/gpi/7/ctrl' in r.stdout
 
 
 def test_several_devices(path, several_devices):
