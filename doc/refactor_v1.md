@@ -296,6 +296,18 @@ Found during characterization (4.2) of the second attempt:
 ticks labeled as seconds, such as `Duration exceeded: 5368709120.0 >
 2147472910.0`.
 
+Upstream defects that the examples expose.  Fix them upstream, not in the
+examples; the example tests mark them `xfail` with these numbers.
+
+U.1. joulescope 1.6.1 reports JS320 statistics `time.range` 8 times too
+large: `Device._on_stats` assumes a 2 MHz sample counter.  `statistics.py`
+prints `0.0, 4.0, 8.0` at 2 Hz on a JS320, and `0.0, 0.5, 1.0` on the JS110
+and JS220.
+
+U.2. pyjoulescope_driver 2.5.0 prints `in frame_id mismatch 0 != 1` to
+stderr when it opens a JS320, now that the native log level defaults to
+`error`.
+
 
 ## 7. Regression checklist
 

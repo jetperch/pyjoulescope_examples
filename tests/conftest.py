@@ -45,7 +45,8 @@ def pytest_generate_tests(metafunc):
 def pytest_collection_modifyitems(items):
     """Mark every test that uses an instrument, for "-m 'not device'"."""
     for item in items:
-        if 'device_path' in getattr(item, 'fixturenames', []):
+        fixtures = getattr(item, 'fixturenames', [])
+        if 'device_path' in fixtures or 'several_devices' in fixtures:
             item.add_marker(pytest.mark.device)
 
 
@@ -70,6 +71,24 @@ def _quiesce(path):
             pytest.fail(f'{path} is no longer connected')
         with d.open(path, mode='restore'):  # raises if the example still holds it
             pass
+
+
+@pytest.fixture
+def several_devices():
+    """The device specification for every instrument under test.
+
+    Skips unless there are at least two.
+    """
+    bench = _bench_devices()
+    errors = [err for _, err in bench if err is not None]
+    if errors:
+        pytest.fail('\n'.join(errors))
+    if len(bench) < 2:
+        pytest.skip('Needs at least two instruments under test')
+    paths = [p for p, _ in bench]
+    yield ','.join(paths)
+    for path in paths:
+        _quiesce(path)
 
 
 @pytest.fixture

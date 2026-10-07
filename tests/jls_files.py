@@ -53,6 +53,32 @@ def signals(sample_rate=SAMPLE_RATE, duration=DURATION):
     return {'current': current, 'voltage': voltage, 'power': power}
 
 
+def summary(path):
+    """Summarize a JLS v2 file.
+
+    :param path: The JLS v2 file path.
+    :return: The dict of signal name to dict with keys source, sample_rate,
+        length, units and mean.
+    """
+    from pyjls import Reader, SignalType
+    rv = {}
+    with Reader(str(path)) as r:
+        for s in r.signals.values():
+            if s.signal_type != SignalType.FSR or s.signal_id == 0:
+                continue
+            mean = None
+            if s.length:
+                mean = float(r.fsr_statistics(s.signal_id, 0, s.length, 1)[0][0])
+            rv[s.name] = {
+                'source': r.sources[s.source_id].name,
+                'sample_rate': s.sample_rate,
+                'length': s.length,
+                'units': s.units,
+                'mean': mean,
+            }
+    return rv
+
+
 def write_v2(path, sample_rate=SAMPLE_RATE, duration=DURATION, names=None):
     """Write a JLS v2 file like a JS220 capture.
 
