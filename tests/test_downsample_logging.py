@@ -28,7 +28,6 @@ COLUMNS = 'time,current,voltage,power,charge,energy,current_min,current_max'
 NUMBER = r'-?\d+(\.\d+)?(e[-+]\d+)?'
 UTC = r'\d{8}T\d{6}\.\d{6}Z'
 ROW = re.compile(rf'^({UTC}|{NUMBER})(,{NUMBER}){{7}}$')
-NO_JS320 = '6.22 no JS320 support'
 
 
 @pytest.fixture
@@ -76,11 +75,6 @@ def _rows(csv):
     return [x for x in csv.splitlines() if x and not x.startswith('#') and x != COLUMNS]
 
 
-def _xfail_js320(request, device_path):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason=NO_JS320))
-
-
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
@@ -111,8 +105,7 @@ def test_no_device_waits(path, documents):
         assert event in txt, event
 
 
-def test_device(path, documents, device_path, request):
-    _xfail_js320(request, device_path)
+def test_device(path, documents, device_path):
     name = f'{device_path.model}_{device_path.serial_number}'
     r = _run(path, documents, device_path=device_path)
     assert r.returncode == 0, r
@@ -132,8 +125,7 @@ def test_device(path, documents, device_path, request):
 
 
 @pytest.mark.parametrize('header', ['none', 'simple', 'comment'])
-def test_header(path, documents, device_path, request, header):
-    _xfail_js320(request, device_path)
+def test_header(path, documents, device_path, header):
     r = _run(path, documents, '--header', header, device_path=device_path)
     assert r.returncode == 0, r
     csv = _logs(documents[1])[0][1][0].splitlines()
@@ -149,8 +141,7 @@ def test_header(path, documents, device_path, request, header):
         assert any(x.startswith('#& ') and 'SIGNAL : SIGINT QUIT' in x for x in csv)
 
 
-def test_time_format(path, documents, device_path, request):
-    _xfail_js320(request, device_path)
+def test_time_format(path, documents, device_path):
     for option in ['--time-format', '--time_format']:
         r = _run(path, documents, option, 'relative', device_path=device_path)
         assert r.returncode == 0, r
@@ -161,8 +152,7 @@ def test_time_format(path, documents, device_path, request):
             assert re.match(r'^\d+\.\d{3},', row), row
 
 
-def test_downsample(path, documents, device_path, request):
-    _xfail_js320(request, device_path)
+def test_downsample(path, documents, device_path):
     r = _run(path, documents, '--downsample', 2, device_path=device_path, rows=3)
     assert r.returncode == 0, r
     txt, csv = _logs(documents[1])[0]
@@ -172,8 +162,7 @@ def test_downsample(path, documents, device_path, request):
     assert 0.9 < (t[-1] - t[-2]).total_seconds() < 1.1  # 1 Hz
 
 
-def test_frequency(path, documents, device_path, request):
-    _xfail_js320(request, device_path)
+def test_frequency(path, documents, device_path):
     r = _run(path, documents, '-f', 4, device_path=device_path)
     assert r.returncode == 0, r
     txt, csv = _logs(documents[1])[0]
@@ -188,8 +177,7 @@ def test_frequency(path, documents, device_path, request):
         assert 0.2 < dt < 0.3
 
 
-def test_duration(path, documents, device_path, request):
-    _xfail_js320(request, device_path)
+def test_duration(path, documents, device_path):
     env, log_dir = documents
     r = harness.run(path, '--duration', 2, env=env, visible=device_path, timeout=15)
     assert not r.interrupted, r
@@ -200,8 +188,6 @@ def test_duration(path, documents, device_path, request):
 
 
 def test_resume(path, documents, device_path):
-    if device_path.model == 'js320':
-        pytest.skip(NO_JS320)
     r = _run(path, documents, device_path=device_path)
     assert r.returncode == 0, r
     k = len(_rows(_logs(documents[1])[0][1][0]))

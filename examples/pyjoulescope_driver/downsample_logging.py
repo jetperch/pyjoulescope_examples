@@ -395,15 +395,13 @@ class LoggerDevice:
                 print(f'JS110 only supports frequency 2.  Ignoring frequency {parent.frequency}')
             d.publish(f'{device}/s/i/range/select', 'auto')
             self.subscribe(f'{device}/s/sstats/value', 'pub', self._on_statistics)
-        elif model == 'js220':
+        else:  # JS220 and JS320
             d.publish(f'{device}/s/i/range/mode', 'auto')
             d.publish(f'{device}/s/v/range/mode', 'auto')
             scnt = int(round(1_000_000 / parent.frequency))
             d.publish(f'{device}/s/stats/scnt', scnt)
             d.publish(f'{device}/s/stats/ctrl', 1)
             self.subscribe(f'{device}/s/stats/value', 'pub', self._on_statistics)
-        else:
-            print(f'Skip unsupported device {device}')
 
     def __str__(self):
         return self.device
