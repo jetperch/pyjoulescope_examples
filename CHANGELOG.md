@@ -54,8 +54,9 @@ Fixes:
   ZeroDivisionError).
 * jls_export_points.py: report an exceeded `--duration` in seconds (was
   time64 ticks).
-* statistics.py and battery_discharge.py: display statistics at 2 Hz on a
-  JS220, rather than at the rate that a previous program left.
+* statistics.py, battery_discharge.py and statistics_logger.py: display
+  statistics at 2 Hz on a JS220, rather than at the rate that a previous
+  program left.
 * battery_discharge.py: exit 1 when no Joulescope is connected (was 0).
 * capture_all.py: exit 1 when no Joulescope is connected (waited forever),
   and after an unsupported `--frequency` (was 0).

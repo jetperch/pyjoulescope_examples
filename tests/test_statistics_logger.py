@@ -75,9 +75,7 @@ def test_file_fmt(path, device_path, tmp_path):
         assert re.match(rf'^{NUMBER},X$', line), line
 
 
-def test_statistics_rate(path, statistics_100hz, request):
-    if statistics_100hz.model == 'js220':
-        request.applymarker(pytest.mark.xfail(strict=True, reason=harness.STATS_RATE))
+def test_statistics_rate(path, statistics_100hz):
     r = harness.run(path, visible=statistics_100hz, interrupt_after=2.5)
     assert 2 <= len(r.lines) - 1 <= 7, r  # 2 Hz, after the "Joulescopes:" line
 
