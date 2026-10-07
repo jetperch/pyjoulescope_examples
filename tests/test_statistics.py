@@ -57,6 +57,7 @@ def test_device(path, device_path):
     assert rows[0][2] == '0.0'
     assert float(rows[0][6]) == 0.0  # charge
     assert float(rows[0][7]) == 0.0  # energy
+    assert 'Warning' not in r.stderr, r
 
 
 def test_device_2hz(path, device_path, request):

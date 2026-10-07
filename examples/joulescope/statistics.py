@@ -19,14 +19,13 @@
 
 from joulescope import scan
 import signal
-import time
 import queue
 
 
-def statistics_callback(serial_number, stats):
+def statistics_callback(name, stats):
     """The function called for each statistics.
 
-    :param serial_number: The serial number producing with this update.
+    :param name: The name of the Joulescope producing this update.
     :param stats: The statistics data structure.
     """
     t = stats['time']['range']['value'][0]
@@ -42,24 +41,13 @@ def statistics_callback(serial_number, stats):
         value = fmt.format(x=k['value'])
         value = f'{value} {k["units"]}'
         values.append(value)
-    ', '.join(values)
-    print(f"{serial_number} {t:.1f}: " + ', '.join(values))
+    print(f"{name} {t:.1f}: " + ', '.join(values))
 
 
 def statistics_callback_factory(device, queue):
-    def cbk(data, indicator=None):
-        serial_number = str(device).split(':')[-1]
-        queue.put((serial_number, data))
+    def cbk(data):
+        queue.put((str(device), data))  # called from the USB thread
     return cbk
-
-
-def handle_queue(q):
-    while True:
-        try:
-            args = q.get(block=False)
-            statistics_callback(*args)
-        except queue.Empty:
-            return  # no more data
 
 
 def run():
@@ -75,16 +63,15 @@ def run():
     try:
         for device in devices:
             cbk = statistics_callback_factory(device, statistics_queue)
-            device.statistics_callback_register(cbk, 'sensor')
+            device.statistics_callback_register(cbk)
             device.open()
             device.parameter_set('i_range', 'auto')
             device.parameter_set('v_range', '15V')
         while not _quit:
-            for device in devices:
-                device.status()
-            time.sleep(0.1)
-            handle_queue(statistics_queue)
-
+            try:
+                statistics_callback(*statistics_queue.get(timeout=0.1))
+            except queue.Empty:
+                pass
     finally:
         for device in devices:
             device.close()
