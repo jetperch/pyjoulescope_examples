@@ -67,14 +67,14 @@ def test_duration(path, device_path, tmp_path, duration):
     r = harness.run(path, 'out.jls', '--duration', duration, cwd=tmp_path, visible=device_path)
     assert r.returncode == 0, r
     assert r.lines == [START]
-    _check(tmp_path / 'out.jls', device_path, ['current', 'voltage'], 0.5, 1.5)
+    _check(tmp_path / 'out.jls', device_path, ['current', 'voltage'], 1.0, 1.05)
 
 
 def test_signals(path, device_path, tmp_path):
     r = harness.run(path, 'out.jls', '--duration', 0.5, '--signals', 'current,voltage,power',
                     cwd=tmp_path, visible=device_path)
     assert r.returncode == 0, r
-    _check(tmp_path / 'out.jls', device_path, ['current', 'voltage', 'power'], 0.2, 1.0)
+    _check(tmp_path / 'out.jls', device_path, ['current', 'voltage', 'power'], 0.5, 0.55)
 
 
 def test_ctrl_c(path, device_path, tmp_path):

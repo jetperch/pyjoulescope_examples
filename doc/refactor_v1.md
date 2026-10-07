@@ -356,6 +356,11 @@ U.5. joulescope 1.6.1 `scan(config='off')` keeps the statistics rate that the
 instrument already has on a JS220, but sets 2 Hz on a JS320.  The models
 should agree.
 
+U.6. joulescope 1.6.1 `JlsWriter` records past `device.start(duration=...)`:
+for 1 second, 2,000,000 samples on a JS110 but 1,000,944 on a JS220 and
+1,027,296 on a JS320.  It writes the whole stream buffer update in which the
+duration ends.
+
 
 ## 7. Regression checklist
 

@@ -46,6 +46,10 @@ Fixes:
 
 Other changes:
 
+* capture_jls.py (was capture_jls_v2.py) records at least `--duration`
+  of samples, counted by the instrument, and exits when the instrument
+  stops, such as when unplugged.  It previously used a wall-clock timer,
+  so a 1 second capture could record 0.9 seconds.
 * Removed calls to the deprecated joulescope Device.status() and the
   statistics callback source argument, which now print
   DeprecationWarning: statistics.py.
