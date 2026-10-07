@@ -28,7 +28,7 @@ def get_parser():
                    help='Display statistics on the plot.')
     p.add_argument('--show',
                    action='store_true',
-                   help='Display the plot.')
+                   help='Display the plot, which is the default without --out.')
     p.add_argument('--sample-count', '--sample_count',
                    type=int,
                    default=1000,
@@ -140,10 +140,10 @@ def run():
     if args.stats:
         f.subplots_adjust(right=0.75)
         f.text(0.99, 0.85, '\n'.join(s_str), horizontalalignment='right', verticalalignment='top')
-    if args.show:
-        plt.show()
     if args.out:
         f.savefig(args.out)
+    if args.show or not args.out:
+        plt.show()
 
 
 if __name__ == '__main__':

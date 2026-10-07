@@ -63,11 +63,18 @@ def test_show(path, jls_v2, tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_neither_out_nor_show(path, jls_v2, tmp_path):
+def test_default_shows(path, jls_v2, tmp_path):
     r = harness.run(path, jls_v2, cwd=tmp_path)
     assert r.returncode == 0, r
-    assert not r.plot_shown
+    assert r.plot_shown
     assert list(tmp_path.iterdir()) == []
+
+
+def test_out_and_show(path, jls_v2, tmp_path):
+    r = harness.run(path, jls_v2, '--out', 'out.png', '--show', cwd=tmp_path)
+    assert r.returncode == 0, r
+    assert r.plot_shown
+    assert _png(tmp_path / 'out.png')
 
 
 def test_sample_count_type(path, jls_v2):

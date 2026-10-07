@@ -36,6 +36,9 @@ Fixes:
 
 Other changes:
 
+* jls_plot.py shows the plot unless given `--out`, the same as
+  jls_energy_plot.py.  It previously did nothing without `--out` or
+  `--show`.
 * Options use hyphens, such as `--sample-count`.  The underscore spelling,
   such as `--sample_count`, still works.  Changed in jls_plot.py.
 * requirements.txt now installs every package that the examples import:
