@@ -63,7 +63,9 @@ class StreamProcess:
 
     @property
     def data(self):
-        return self._buffer[:self.idx, :]
+        if self.idx is None:
+            return self._buffer[:0, :]
+        return self._buffer[:self.idx - self.idx_offset, :]
 
     def stream_notify(self, stream_buffer):
         # called from USB thead, keep fast!
