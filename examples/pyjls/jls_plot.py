@@ -94,7 +94,7 @@ def run():
             print('"current" signal not found')
             return 1
         s = signals[0]
-        incr = s.length // args.sample_count
+        incr = max(1, s.length // args.sample_count)
         length = s.length // incr
         data = r.fsr_statistics(signals[0].signal_id, 0, incr, length)
         y = data[:, 0]

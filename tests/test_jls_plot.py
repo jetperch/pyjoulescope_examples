@@ -95,7 +95,6 @@ def test_missing_file(path, tmp_path):
     assert 'missing.jls' in r.stdout + r.stderr
 
 
-@pytest.mark.xfail(strict=True, reason='6.11 divides by zero on files shorter than 1000 samples')
 def test_short_file(path, tmp_path):
     jls = jls_files.write_v2(tmp_path / 's.jls', duration=0.005)  # 500 samples
     r = harness.run(path, jls, '--out', 'out.png', cwd=tmp_path)

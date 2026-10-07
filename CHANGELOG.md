@@ -29,6 +29,11 @@ Breaking changes:
 * Requires Python 3.12 or newer, joulescope 1.6.1 or newer and
   pyjoulescope_driver 2.5.0 or newer.
 
+Fixes:
+
+* jls_plot.py: plot JLS v2 files shorter than 1000 samples (was
+  ZeroDivisionError).
+
 Other changes:
 
 * requirements.txt now installs every package that the examples import:
