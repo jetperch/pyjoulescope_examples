@@ -139,6 +139,8 @@ def _run():
                     time.sleep(0.1)
             except KeyboardInterrupt:
                 pass
+            # The instrument keeps the fuse settings, so the fuse keeps protecting the target.
+            print(f'The fuse remains enabled on {device_path}.')
 
 
 if __name__ == '__main__':

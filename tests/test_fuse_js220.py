@@ -71,7 +71,7 @@ def test_device(path, device_path, fuse_enabled):
         return
     assert r.interrupted and not r.killed, r
     assert r.returncode == 0, r
-    assert r.stdout == ''
+    assert r.lines == [f'The fuse remains enabled on {device_path}.']
     assert fuse_enabled() == 1  # stays armed after exit
 
 

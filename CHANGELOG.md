@@ -92,6 +92,7 @@ Fixes:
 
 Other changes:
 
+* fuse.py says on exit that the fuse remains enabled, which it always did.
 * Added JS320 support: measure.py, read.py and detector.py.
 * capture_jls.py (was capture_jls_v2.py) records at least `--duration`
   of samples, counted by the instrument, and exits when the instrument
