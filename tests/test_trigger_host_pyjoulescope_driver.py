@@ -25,7 +25,7 @@ pytestmark = pytest.mark.parametrize('path', harness.paths('trigger_host_pyjoule
 def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
-    for option in ['--verbose', '-v', '--serial_number', '--signal', '--start-duration',
+    for option in ['--verbose', '-v', '--device', '-d', '--signal', '--start-duration',
                    '--start-threshold', '--stop-duration', '--stop-threshold']:
         assert option in r.stdout
 
@@ -73,7 +73,8 @@ def test_starts_low(path, device_path, trigger_level, request):
     assert trigger_level() == 0
 
 
-def test_serial_number(path, device_path):
-    r = harness.run(path, '--serial_number', 'ZZZZ', visible=device_path)
+@pytest.mark.parametrize('option', ['--device', '-d', '--serial_number', '--serial-number'])
+def test_device_unknown(path, device_path, option):
+    r = harness.run(path, option, 'ZZZZ', visible=device_path)
     assert r.returncode == 1, r
     assert r.lines == ['Device not found']
