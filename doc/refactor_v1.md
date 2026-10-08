@@ -467,7 +467,7 @@ firmware 1.1.4 added; the JS110 and JS220 have idle disabled.
   the open arrived while the suspend was in progress.
 * The first bulk OUT transfer of the link request then fails with
   ERROR_OPERATION_ABORTED (995) or ERROR_NO_SUCH_DEVICE (433).  Windows
-  logs Kernel-PnP event 1010, "Device USB\VID_16D0&PID_135ANB has
+  logs Kernel-PnP event 1010, "Device USB\VID_16D0&PID_135A\31NB has
   been surprise removed as it is reported as missing on the bus", and
   the JS320 re-enumerates about 220 ms later.
 * The JS320 does not reboot: its boot history (`minibitty info
