@@ -35,13 +35,12 @@ def test_invalid(path):
     assert r.returncode == 2, r
 
 
-def test_no_device_waits(path, tmp_path):
-    r = harness.run(path, '-v', '--out', 'out.csv', cwd=tmp_path, interrupt_after=2)
-    assert r.interrupted and not r.killed, r
-    assert r.returncode == 0, r
-    assert r.lines == ['Find the connected devices', 'Found devices: []',
-                       'Open and configure each device', 'Monitor each device', 'Closing']
-    assert (tmp_path / 'out.csv').read_text() == ''
+@pytest.mark.xfail(strict=True, reason='6.35 waits forever with no instrument')
+def test_no_device(path, tmp_path):
+    r = harness.run(path, '--out', 'out.csv', cwd=tmp_path, timeout=10)
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert r.lines == ['No JS220 or JS320 found']
 
 
 def test_device(path, device_path, tmp_path):

@@ -50,6 +50,16 @@ def test_signal(path, device_path, signal):
     assert not r.has_traceback, r
 
 
+@pytest.mark.xfail(strict=True, reason='6.39 waits forever when every instrument is unsupported')
+def test_js110_only(path, device_path):
+    if device_path.model != 'js110':
+        pytest.skip('only the JS110 is unsupported')
+    r = harness.run(path, visible=device_path, timeout=10)
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert r.lines[-1] == 'No JS220 or JS320 found'
+
+
 def test_no_device(path):
     r = harness.run(path)
     assert r.returncode == 1, r

@@ -36,11 +36,12 @@ def test_no_args(path):
     assert 'the following arguments are required: state' in r.stderr
 
 
+@pytest.mark.xfail(strict=True, reason='6.34 exits 0 silently when no instrument matches')
 @pytest.mark.parametrize('arg', ['on', 'off', '?'])
 def test_no_device(path, arg):
     r = harness.run(path, arg)
-    assert r.returncode == 0, r
-    assert r.stdout == ''
+    assert r.returncode == 1, r
+    assert r.lines == ['No Joulescope found']
 
 
 def test_invalid(path):

@@ -48,6 +48,15 @@ def test_no_device(path, tmp_path):
     assert 'No Joulescope found' in r.stderr
 
 
+@pytest.mark.xfail(strict=True, reason='6.38 hides an open failure behind UnboundLocalError')
+def test_open_fails(path, device_path, tmp_path):
+    r = harness.run(path, cwd=tmp_path, visible=device_path, open_fail='1', timeout=10)
+    assert not r.interrupted, r
+    assert r.returncode != 0, r
+    assert 'jsdrv_open timed out' in r.stderr
+    assert 'UnboundLocalError' not in r.stderr, r
+
+
 def test_statistics(path, device_path, tmp_path):
     r = harness.run(path, '--duration', 1, cwd=tmp_path, visible=device_path, interrupt_after=3.5)
     assert r.interrupted and not r.killed, r

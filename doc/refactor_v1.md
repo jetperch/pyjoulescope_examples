@@ -341,6 +341,28 @@ opens it, such as a JS320 that re-enumerates on a replug (see U.8).  The
 open raises TimeoutError, and the logger stops with a FAIL event, although
 it promises to survive unplug and temporary loss of USB communication.
 
+Found by a review of the refactored examples:
+
+6.34. `dut_power.py` exits 0 and prints nothing when no instrument matches,
+such as for a `--device` typo, so the user believes it set the power.
+
+6.35. `timesync.py` waits forever with no JS220 or JS320.
+
+6.36. `statistics.py` waits forever with no instrument.
+
+6.37. `record.py --signals` with an unknown name raises KeyError.
+
+6.38. `statistics_with_trigger_to_jls.py` raises UnboundLocalError from its
+`finally` block when the open fails, which hides the open error.
+
+6.39. `trigger_out.py` and `gpi_region.py` wait forever when every instrument
+is unsupported, such as with only a JS110.
+
+The review also found that `downsample_logging.py` can leave a CSV file and
+the instrument open when a publish fails after the open, and that the
+examples handle Ctrl-C with two patterns, KeyboardInterrupt and a SIGINT
+handler.  No test here shows the first, so per 2.7 it waits.
+
 No black-box test can show 6.10 (`battery_discharge.py` releasing its lock
 twice): the example stops after the first reading below the threshold, before
 a second can arrive.  Per 2.7 it is not fixed on its own; the refactor

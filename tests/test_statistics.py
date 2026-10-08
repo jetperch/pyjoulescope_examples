@@ -32,17 +32,12 @@ def _parse(r):
     return rows
 
 
-def test_no_device_waits(path):
-    r = harness.run(path, interrupt_after=3)
-    assert r.interrupted and not r.killed, r
-    assert r.returncode == 0, r
-    assert r.stdout == ''
-
-
-def test_ignores_args(path):
-    r = harness.run(path, '--help', interrupt_after=3)
-    assert r.returncode == 0, r
-    assert r.stdout == ''
+@pytest.mark.xfail(strict=True, reason='6.36 waits forever with no instrument')
+def test_no_device(path):
+    r = harness.run(path, timeout=10)
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert r.lines == ['No Joulescope found']
 
 
 def test_device(path, device_path):
