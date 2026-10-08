@@ -91,6 +91,7 @@ Fixes:
 * statistics.py, statistics_logger.py and battery_discharge.py: display
   statistics at 2 Hz on a JS220, rather than at the rate that a previous
   program left.
+* statistics.py: exit 1 when no Joulescope is connected (waited forever).
 * statistics_logger.py: format file rows with `--file-fmt` (was ignored),
   and exit 1 when no Joulescope is connected (printed rows forever).
 * statistics_v1.py and capture_jls_v1.py: exit 1 after an error (was 0).

@@ -32,7 +32,6 @@ def _parse(r):
     return rows
 
 
-@pytest.mark.xfail(strict=True, reason='6.36 waits forever with no instrument')
 def test_no_device(path):
     r = harness.run(path, timeout=10)
     assert not r.interrupted, r
