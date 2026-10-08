@@ -70,7 +70,6 @@ def test_signals(path, device_path, tmp_path):
     _check(tmp_path / 'out.jls', device_path, ['current', 'voltage', 'power'], 0.2, 1.0)
 
 
-@pytest.mark.xfail(strict=True, reason='6.37 raises KeyError for an unknown signal')
 def test_signals_invalid(path, device_path, tmp_path):
     r = harness.run(path, 'out.jls', '--duration', 0.5, '--signals', 'current,volts', cwd=tmp_path,
                     visible=device_path)

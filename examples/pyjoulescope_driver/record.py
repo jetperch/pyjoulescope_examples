@@ -66,7 +66,11 @@ def run():
                 device.publish('s/i/range/select', 'auto')
             else:  # the JS220 and JS320 open with the current range off
                 device.publish('s/i/range/mode', 'auto')
-            recorder = Record(d, device_path, args.signals)
+            try:
+                recorder = Record(d, device_path, args.signals)
+            except KeyError as ex:
+                print(f'Unknown signal {ex}')
+                return 1
             recorder.open(args.filename)  # enables the signals and starts recording
             print('Recording.  Press CTRL-C to stop.')
             t_stop = None if args.duration is None else time.monotonic() + args.duration
