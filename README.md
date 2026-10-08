@@ -63,7 +63,7 @@ directory groups the scripts by the package they demonstrate:
 | Directory | Package | Start with |
 | --------- | ------- | ---------- |
 | [examples/joulescope](examples/joulescope) | joulescope, the high-level API | `capture_simple.py`, `scan.py`, `statistics.py`, `capture_jls.py`, `energy_printer.py` |
-| [examples/pyjoulescope_driver](examples/pyjoulescope_driver) | pyjoulescope_driver, the low-level driver | `measure.py`, `read.py`, `dut_power.py` |
+| [examples/pyjoulescope_driver](examples/pyjoulescope_driver) | pyjoulescope_driver, the low-level driver | `statistics.py`, `measure.py`, `read.py`, `record.py`, `dut_power.py`, `hotplug.py` |
 | [examples/pyjls](examples/pyjls) | pyjls, to read JLS files | `jls_plot.py` |
 | [examples/legacy](examples/legacy) | older examples, kept for reference | |
 

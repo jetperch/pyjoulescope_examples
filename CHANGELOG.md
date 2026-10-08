@@ -109,6 +109,13 @@ Fixes:
 
 Other changes:
 
+* Added examples/pyjoulescope_driver/hotplug.py, which displays
+  Joulescopes as they connect and disconnect with Driver.device_watch().
+* Added examples/pyjoulescope_driver/record.py, which records to a JLS v2
+  file with the pyjoulescope_driver Record class.
+* Added examples/pyjoulescope_driver/statistics.py, which displays
+  statistics with pyjoulescope_driver, including the JS110 host-side
+  statistics.
 * fuse.py says on exit that the fuse remains enabled, which it always did.
 * Added JS320 support: measure.py, read.py, detector.py, gpi_region.py,
   timesync.py, downsample_logging.py and
