@@ -331,15 +331,15 @@ rounds its buffer up to 10,000 samples and fills it, and these instruments
 keep streaming briefly after the duration.  This is separate from 6.7, which
 returned zeros after an early stop, such as on Ctrl-C.
 
-6.33. `downsample_logging.py` exits when an instrument disappears while it
-opens it, such as a JS320 that re-enumerates on a replug (see U.8).  The
-open raises TimeoutError, and the logger stops with a FAIL event, although
-it promises to survive unplug and temporary loss of USB communication.
-
 6.32. `timesync.py --out` writes its CSV header without a newline, so the
 header and the first row share a line.  Showing it needs two instruments
 that share a GPI0 signal, so per 2.7 it waits for a bench with that wiring.
 See tests/MANUAL.md.
+
+6.33. `downsample_logging.py` exits when an instrument disappears while it
+opens it, such as a JS320 that re-enumerates on a replug (see U.8).  The
+open raises TimeoutError, and the logger stops with a FAIL event, although
+it promises to survive unplug and temporary loss of USB communication.
 
 No black-box test can show 6.10 (`battery_discharge.py` releasing its lock
 twice): the example stops after the first reading below the threshold, before
@@ -363,24 +363,30 @@ U.3. pyjoulescope_driver 2.5.0 prints `pkt_index skip: expected 0, received
 `current_ranging_filter.py`.
 
 U.4. pyjoulescope_driver 2.5.0 intermittently crashes with an access
-violation (0xC0000005) while finalizing.  Seen twice on Windows: `monitor.py`
-on a JS110 after Ctrl-C (1 of 14 runs), and a test process that created a
-second `Driver` to reopen an instrument (1 of 31 runs).  Not yet
-reproducible on demand.
+violation (0xC0000005) in `Driver.finalize()` after a JS110 streamed.
+`python examples/pyjoulescope_driver/monitor.py -d <JS110 serial number>`,
+then Ctrl-C after 2 seconds, crashes in 7 of 20 runs on Windows, as it
+exits its `with Driver()` block.  measure.py on a JS110 crashed once in
+about 40 runs, and a minimal script with the same topics did not crash in
+40 runs.  The JS220 and JS320 did not crash.
 
 U.5. joulescope 1.6.1 `scan(config='off')` keeps the statistics rate that the
 instrument already has on a JS220, but sets 2 Hz on a JS320.  The models
 should agree.
 
-U.8. A JS320 (firmware 1.1.10) sometimes drops off USB when a program reopens
-it about 2 seconds after closing it, so the open times out.  Seen in 2 of
-11 runs of the downsample_logging.py hotplug test.  WinUSB reports "A device
-which does not exist was specified" during the open.
-
 U.6. joulescope 1.6.1 `JlsWriter` records past `device.start(duration=...)`:
 for 1 second, 2,000,000 samples on a JS110 but 1,000,944 on a JS220 and
 1,027,296 on a JS320.  It writes the whole stream buffer update in which the
 duration ends.
+
+U.7. pyjoulescope_driver 2.5.0 has no public table of the signals and their
+topics, so `read.py` imports the private `record._SIGNALS` and
+`record._signal_name_map`.
+
+U.8. A JS320 (firmware 1.1.10) sometimes drops off USB when a program reopens
+it about 2 seconds after closing it, so the open times out.  Seen in 2 of
+11 runs of the downsample_logging.py hotplug test.  WinUSB reports "A device
+which does not exist was specified" during the open.
 
 
 ## 7. Regression checklist
@@ -620,3 +626,36 @@ decision;
 
 11.5. the CHANGELOG lists every user-visible change, with breaking changes
 under their own heading.
+
+
+## 12. Status of the second attempt
+
+As of 2026 Oct 7, on the `feature/v1` branch, against the local joulescope
+1.6.1 and pyjoulescope_driver 2.5.0, on Windows with a JS110, JS220 and
+JS320:
+
+12.1. Done: the infrastructure (5.1), characterization tests for every
+example (4.1 to 4.3), the move to examples/ with bin/ wrappers (5.2), the
+pyjls, beginner, joulescope and pyjoulescope_driver examples (5.4), JS320
+support (5.5), and hotplug.py, record.py and the driver statistics.py
+(5.6).  Each step is its own commit.
+
+12.2. Fixed, each with a test that failed first: 6.1, 6.2 (by the 6.3
+refactor), 6.4, 6.5, 6.7 for read_by_callback.py, 6.8, 6.9, 6.11 to 6.20,
+6.22 to 6.31 and 6.33.  6.10 is gone with the lock that caused it.
+
+12.3. Not fixed, since no test on this bench can show them (2.7): 6.3's
+file writes on the driver thread in monitor.py, 6.6 (needs GPI wiring),
+6.7 for read.py (needs dropped samples), 6.21 except fuse.py, which now
+publishes with timeout=0, and 6.32 (needs two instruments sharing GPI0).
+tests/MANUAL.md covers the wiring and load cases.
+
+12.4. The upstream defects U.1 to U.8 remain.  The tests mark U.1 as
+`xfail` on the JS320.  U.4 can still crash a JS110 test intermittently.
+
+12.5. The section 11 criteria: 11.2, 11.4 and 11.5 hold.  For 11.1, the
+characterization tests ran on `main` code before each change; where an
+approved decision or a fix changed behavior, the test changed first, in
+the same commit as the example.  For 11.3, the regression checklist holds
+for every example, except that a few error messages now come from the
+libraries, such as `No Joulescope found` (decision 8.7).

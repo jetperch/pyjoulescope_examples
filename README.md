@@ -79,10 +79,23 @@ the available arguments:
 Many of the scripts also have instructions inside the script.  Use your 
 favorite text editor to open the script.
 
+With several Joulescopes connected, the pyjoulescope_driver examples take
+`--device` to select one, such as `--device js220`, `--device 000415` or
+`--device js220-000415`.
+
 The scripts used to be in the bin directory.  The bin directory still runs
 each script by its old name, such as `python3 bin/scan_by_serial_number.py`.
 See [tools/gen_bin_wrappers.py](tools/gen_bin_wrappers.py) for where each one
 moved.
+
+
+## Tests
+
+The tests run each example the way you do, with and without connected
+Joulescopes.  See [tests/README.md](tests/README.md).
+
+    python3 -m pip install pytest
+    python3 -m pytest -m "not device"
 
 
 ## License

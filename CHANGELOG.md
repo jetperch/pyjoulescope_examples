@@ -30,85 +30,87 @@ Breaking changes:
   pyjoulescope_driver 2.5.0 or newer.
 * capture_all.py records JLS v2 files instead of JLS v1, with the same
   file names.  Read them with pyjls, or plot them with
-  examples/pyjls/jls_plot.py.  This also records at low `--frequency`
-  values, such as 1000, which recorded nothing before.
-* The pyjoulescope_driver examples select an instrument with `--device`
-  (`-d` where free), the same as the pyjoulescope_driver 2.5.0 entry points.
-  It takes a device specification: a serial number, a model, such as
-  js220, or both, such as js220-000415.  `--serial-number` and
-  `--serial_number` still work.  The messages for no matching device or
-  several now come from pyjoulescope_driver, such as
-  `No Joulescope found`.  Changed in measure.py, dut_power.py, detector.py,
-  gpi_region.py, monitor.py, timesync.py, downsample_logging.py (no `-d`,
-  which is `--downsample`), trigger_out.py (was
-  trigger_host_pyjoulescope_driver.py),
-  fuse.py (was fuse_js220.py) and read.py (was
-  read_by_pyjoulescope_driver.py), which has no `-d`, since `-d` is
-  `--duration`.
-* dut_power.py parses its arguments with argparse.  A missing or invalid
-  state exits 2 with the argparse message, instead of printing the usage.
-  It only controls Joulescope instruments, not other USB devices that the
-  driver lists, such as a MiniBitty.
+  examples/pyjls/jls_plot.py.
 * scan.py (was scan_by_serial_number.py) lists the connected Joulescopes
   when given no argument, instead of prompting on stdin.  Its argument is
   now a device specification: a serial number as before, matched without
-  regard to case, or a model, such as js220, or both, such as js220-000415.
+  regard to case, a model, such as js220, or both, such as js220-000415.
   An unknown device prints the available devices and exits 1, instead of
   raising KeyError.
+* The pyjoulescope_driver examples select instruments with `--device`, the
+  same as the pyjoulescope_driver 2.5.0 entry points.  It takes a device
+  specification, such as 000415, js220 or js220-000415.  `--serial-number`
+  and `--serial_number` still work.  `-d` is a short form, except in
+  read.py, where `-d` is `--duration`, and downsample_logging.py, where it
+  is `--downsample`.  The messages for no matching instrument, or several,
+  now come from pyjoulescope_driver, such as `No Joulescope found`.  These
+  examples also ignore other USB devices that the driver lists, such as a
+  MiniBitty.  Changed in detector.py, downsample_logging.py, dut_power.py,
+  fuse.py (was fuse_js220.py), gpi_region.py, measure.py, monitor.py,
+  read.py (was read_by_pyjoulescope_driver.py), timesync.py and
+  trigger_out.py (was trigger_host_pyjoulescope_driver.py).
+* dut_power.py parses its arguments with argparse, so a missing or invalid
+  state exits 2 with the argparse message.  The state still accepts on,
+  off, ? and the other spellings, in any case.
+* trigger_out.py accepts only i, v or p for `--signal`.
 
 Fixes:
 
-* downsample_logging.py: `--duration` works (was AttributeError), and
+* accumulators.py --source sensor: stop after `--duration` (was ignored),
+  and print the final summary on Ctrl-C (was a KeyboardInterrupt
+  traceback).
+* battery_discharge.py: exit 1 when no Joulescope is connected (was 0).
+* capture_all.py: exit 1 when no Joulescope is connected (waited forever)
+  and after an unsupported `--frequency` (was 0), and record at a low
+  `--frequency`, such as 1000 (recorded nothing).
+* downsample_logging.py: `--duration` works (was AttributeError),
   `--resume` continues charge and energy from their last values (was from
-  the current_min and current_max columns).  It also keeps logging when an
-  instrument disappears while it opens, and resumes when it returns.  It
-  previously exited.
+  the current_min and current_max columns), and it keeps logging when an
+  instrument disappears while it opens, then resumes when it returns (it
+  exited).
+* dut_power.py: exit with an error when given no argument (was
+  IndexError).
+* fuse.py: exit 1 when no Joulescope is connected (was 0), and explain that
+  the JS110 has no fuse (was RuntimeError).
+* jls_export_points.py: report an exceeded `--duration` in seconds (was
+  time64 ticks).
+* jls_plot.py: plot JLS v2 files shorter than 1000 samples (was
+  ZeroDivisionError).
 * monitor.py: write voltage in the voltage columns (was current), exit 1
   when no Joulescope is connected (was 0), record 50 Hz statistics on a
   JS110 (was 100 Hz), and no longer allocate an unused 500 MB buffer or
   stream samples that it never reads on a JS220 or JS320.
-* timesync.py: exit cleanly after skipping an unsupported instrument (was
-  RuntimeError on exit).
-* trigger_out.py (was trigger_host_pyjoulescope_driver.py): detect on the
-  `--signal` given, which is now one of i, v or p.  It always used i.  It
-  also starts with the trigger output low, which it set high.
-* fuse.py (was fuse_js220.py): exit 1 when no Joulescope is connected (was
-  0), and explain that the JS110 has no fuse (was RuntimeError).
-* dut_power.py: exit 1 after the usage message when given no argument
-  (was IndexError).
 * read.py: exit 1 with the error when the instrument does not have a
-  requested signal, such as `--signals T` on a JS110.  It waited forever.
-* statistics_v1.py and capture_jls_v1.py: exit 1 after an error (was 0).
-* windowed_accum.py: runs with joulescope 1.6 (was ImportError for
-  stats_to_api).
-* statistics_with_trigger_to_jls.py: record the instrument model in the
-  JLS file (was JS110 on every model), record on a JS110 (was KeyError),
-  and record 120 seconds without `--duration` (was TypeError).
-* statistics_logger.py: format file rows with `--file-fmt` (was ignored),
-  and exit 1 when no Joulescope is connected (printed rows forever).
-* read_by_method.py and read_by_callback.py: run from any directory.
-  They previously needed the repository on PYTHONPATH.
-* read_by_callback.py: return exactly `--duration` of samples, which was up
-  to 9,999 more on the JS220 and JS320, and after Ctrl-C, return only the
-  samples received, which was the whole buffer, padded with zeros.
-* read_by_method.py and read_by_callback.py: `--plot` works with
-  Matplotlib 3.9 and newer (was AttributeError: BrokenBarHCollection).
-* jls_plot.py: plot JLS v2 files shorter than 1000 samples (was
-  ZeroDivisionError).
-* jls_export_points.py: report an exceeded `--duration` in seconds (was
-  time64 ticks).
-* statistics.py, battery_discharge.py and statistics_logger.py: display
+  requested signal, such as `--signals T` on a JS110 (waited forever).
+* read_by_callback.py: return exactly `--duration` of samples (was up to
+  9,999 more on the JS220 and JS320), and after Ctrl-C, return only the
+  samples received (was the whole buffer, padded with zeros).
+* read_by_method.py and read_by_callback.py: run from any directory (they
+  needed the repository on PYTHONPATH), and `--plot` works with Matplotlib
+  3.9 and newer (was AttributeError: BrokenBarHCollection).
+* statistics.py, statistics_logger.py and battery_discharge.py: display
   statistics at 2 Hz on a JS220, rather than at the rate that a previous
   program left.
-* battery_discharge.py: exit 1 when no Joulescope is connected (was 0).
-* capture_all.py: exit 1 when no Joulescope is connected (waited forever),
-  and after an unsupported `--frequency` (was 0).
-* accumulators.py --source sensor: stop after `--duration` (was ignored),
-  and print the final summary on Ctrl-C (was a KeyboardInterrupt
-  traceback).
+* statistics_logger.py: format file rows with `--file-fmt` (was ignored),
+  and exit 1 when no Joulescope is connected (printed rows forever).
+* statistics_v1.py and capture_jls_v1.py: exit 1 after an error (was 0).
+* statistics_with_trigger_to_jls.py: record the instrument model in the JLS
+  file (was JS110 on every model), record on a JS110 (was KeyError), and
+  record 120 seconds without `--duration` (was TypeError).
+* timesync.py: exit cleanly after skipping an unsupported instrument (was
+  RuntimeError).
+* trigger_out.py: detect on the `--signal` given (always used current),
+  and start with the trigger output low (started high).
+* windowed_accum.py: run with joulescope 1.6 (was ImportError for
+  stats_to_api).
 
 Other changes:
 
+* Moved the examples from bin/ into examples/, grouped by package:
+  joulescope, pyjoulescope_driver, pyjls and legacy.  Some examples have
+  new names, such as scan.py for scan_by_serial_number.py.  The bin/
+  scripts still work by their old names and run the moved examples.  See
+  tools/gen_bin_wrappers.py and examples/legacy/README.md.
 * Added examples/pyjoulescope_driver/hotplug.py, which displays
   Joulescopes as they connect and disconnect with Driver.device_watch().
 * Added examples/pyjoulescope_driver/record.py, which records to a JLS v2
@@ -116,32 +118,28 @@ Other changes:
 * Added examples/pyjoulescope_driver/statistics.py, which displays
   statistics with pyjoulescope_driver, including the JS110 host-side
   statistics.
-* fuse.py says on exit that the fuse remains enabled, which it always did.
-* Added JS320 support: measure.py, read.py, detector.py, gpi_region.py,
-  timesync.py, downsample_logging.py and
-  trigger_out.py.
-* capture_jls.py (was capture_jls_v2.py) records at least `--duration`
-  of samples, counted by the instrument, and exits when the instrument
-  stops, such as when unplugged.  It previously used a wall-clock timer,
-  so a 1 second capture could record 0.9 seconds.
-* Removed calls to the deprecated joulescope Device.status() and the
-  statistics callback source argument, which now print
-  DeprecationWarning: statistics.py, accumulators.py,
-  battery_discharge.py, statistics_logger.py,
-  statistics_with_trigger_to_jls.py and the legacy examples.
+* Added JS320 support to detector.py, downsample_logging.py, gpi_region.py,
+  measure.py, read.py, timesync.py and trigger_out.py.
+* capture_jls.py (was capture_jls_v2.py) records at least `--duration` of
+  samples, counted by the instrument, and exits when the instrument stops,
+  such as when unplugged.  It used a wall-clock timer, so a 1 second
+  capture could record 0.9 seconds.
+* accumulators.py, battery_discharge.py, statistics.py,
+  statistics_logger.py, statistics_with_trigger_to_jls.py and the legacy
+  examples no longer call deprecated functions, which printed
+  DeprecationWarning: the joulescope Device.status() and statistics
+  callback source argument, scan(name=...) and datetime.utcnow().
+* statistics_with_trigger_to_jls.py uses joulescope JlsWriter instead of
+  its own copy, and battery_discharge.py and accumulators.py receive
+  statistics with Device.statistics_iter().
 * jls_plot.py shows the plot unless given `--out`, the same as
-  jls_energy_plot.py.  It previously did nothing without `--out` or
-  `--show`.
+  jls_energy_plot.py.  It did nothing without `--out` or `--show`.
+* fuse.py says on exit that the fuse remains enabled, which it always was.
 * Options use hyphens, such as `--sample-count`.  The underscore spelling,
   such as `--sample_count`, still works.  Changed in jls_plot.py,
   jls_energy_plot.py and statistics_logger.py.
-* requirements.txt now installs every package that the examples import:
+* requirements.txt installs every package that the examples import:
   pyjoulescope_driver, pyjls, openpyxl, psutil and, on Windows, pywin32.
-* Moved the examples from bin/ into examples/, grouped by package:
-  joulescope, pyjoulescope_driver, pyjls and legacy.  Some examples have
-  new names, such as scan.py for scan_by_serial_number.py.  The bin/
-  scripts still work by their old names and run the moved examples.
-  See tools/gen_bin_wrappers.py.
 * Added tests that run every example as a user does, with no instrument,
   each instrument and several instruments.  See tests/README.md.
 
