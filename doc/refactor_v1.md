@@ -405,6 +405,22 @@ use-after-free in `Driver.finalize()` after a JS110 streamed.  The same
 command crashed in 5 of 20 runs through the test shim and 12 of 20 runs
 without it.  faulthandler places the crash in `Driver.finalize()`.  It did
 not occur in the full suite run.
+Root cause, 2026 Oct 8: the WinUSB backend's `device_close()` freed the
+WinUSB handle while a control transfer, such as a JS110 status poll, was
+in flight.  Freeing the handle aborted the transfer, and the device
+thread's `ctrl_complete()` then called `WinUsb_GetOverlappedResult()`
+with `INVALID_HANDLE_VALUE`.  cdb caught it there, while the main thread
+was in `Driver.close()`.  A Ctrl-C that lands while `monitor.py` opens
+the instrument leaves the `with Driver()` block, so finalize closes a
+JS110 that is still streaming.  A SIGINT raised inside the process
+crashed it too, so the console is not involved.  The libusb backend
+cancels every transfer on close, so it is not affected.
+Status: fixed in joulescope_driver 5e2fb08, on the
+`fix/winusb_close_ctrl` branch.  `device_close()` now cancels and waits
+for the transfer in flight, and answers each queued control transfer
+with `JSDRV_ERROR_CLOSED`.  A sweep of Ctrl-C times from 0.6 to 3.0
+seconds crashed in 15 of 33 runs before the fix and 0 of 33 after, and
+60 more runs at 2 seconds did not crash.
 
 U.5. joulescope 1.6.1 `scan(config='off')` keeps the statistics rate that the
 instrument already has on a JS220, but sets 2 Hz on a JS320.  The models
@@ -733,8 +749,10 @@ firmware and FPGA 1.1.11:
   skipped and 6 xfailed (U.1), in 34 minutes.  U.4 did not occur in this
   run.
 * Fixed upstream: U.2 and U.5.
-* Fixed afterwards in pyjoulescope: U.1.
-* Still open: U.3, U.4, U.6, U.7 and U.8.  Each entry in section 6
+* Fixed afterwards: U.1 in pyjoulescope and U.4 in joulescope_driver,
+  each on its own branch.  With both, the full suite passed: 1172 passed
+  and 55 skipped, in 33 minutes.
+* Still open: U.3, U.6, U.7 and U.8.  Each entry in section 6
   has the evidence.
 * New: U.9, a JS320 that stops answering after a streaming program exits
   without closing it.
