@@ -183,6 +183,10 @@ def run():
                 print(f'Unsupported device {device_path}: ignore')
                 continue
 
+        if not handlers:
+            print('No JS220 or JS320 found')
+            return 1
+
         verbose('Perform the detection')
         try:
             while True:

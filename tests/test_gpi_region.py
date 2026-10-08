@@ -38,7 +38,6 @@ def test_invalid(path):
     assert r.returncode == 2, r
 
 
-@pytest.mark.xfail(strict=True, reason='6.39 waits forever when every instrument is unsupported')
 def test_js110_only(path, device_path):
     if device_path.model != 'js110':
         pytest.skip('only the JS110 is unsupported')
@@ -55,13 +54,12 @@ def test_no_device(path):
 
 
 def test_device(path, device_path):
+    if device_path.model == 'js110':
+        pytest.skip('the JS110 is not supported, see test_js110_only')
     r = harness.run(path, '--gpi', '0,1,T', '--vref', '3v3', visible=device_path, interrupt_after=2)
     assert r.interrupted and not r.killed, r
     assert r.returncode == 0, r
-    if device_path.model == 'js110':
-        assert r.lines == [f'Unsupported device {device_path}: ignore']
-    else:
-        assert r.lines == [HEADER]
+    assert r.lines == [HEADER]
 
 
 def test_verbose(path, device_path):

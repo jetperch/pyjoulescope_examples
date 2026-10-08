@@ -104,6 +104,8 @@ Fixes:
   RuntimeError), and exit 1 without a JS220 or JS320 (waited forever).
 * trigger_out.py: detect on the `--signal` given (always used current),
   and start with the trigger output low (started high).
+* trigger_out.py and gpi_region.py: exit 1 without a JS220 or JS320, such
+  as with only a JS110 (waited forever).
 * windowed_accum.py: run with joulescope 1.6 (was ImportError for
   stats_to_api).
 
