@@ -56,7 +56,18 @@ def _examples():
         from gen_bin_wrappers import MOVED
     finally:
         sys.path.pop(0)
-    return {name[:-3]: [f'examples/{target}', f'bin/{name}'] for name, target in MOVED.items()}
+    rv = {name[:-3]: [f'examples/{target}', f'bin/{name}'] for name, target in MOVED.items()}
+    for name, target in NEW.items():
+        rv[name] = [f'examples/{target}']
+    return rv
+
+
+# The examples added after the move to examples/, which have no bin/ name.
+NEW = {
+    'hotplug': 'pyjoulescope_driver/hotplug.py',
+    'record': 'pyjoulescope_driver/record.py',
+    'driver_statistics': 'pyjoulescope_driver/statistics.py',
+}
 
 
 # The examples by their historical bin/ name, mapped to the paths that run
@@ -71,7 +82,7 @@ def paths(name):
     :return: The list of paths, to use with pytest.mark.parametrize.
         Set JOULESCOPE_EXAMPLES_WRAPPERS=0 to skip the bin/ wrappers.
     """
-    rv = [p for p in EXAMPLES[name] if os.path.isfile(os.path.join(REPO_PATH, p))]
+    rv = list(EXAMPLES[name])
     if os.environ.get(ENV_WRAPPERS, '1') == '0':
         rv = rv[:1]
     return rv

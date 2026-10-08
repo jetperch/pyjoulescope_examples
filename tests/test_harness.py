@@ -31,7 +31,7 @@ def _script(tmp_path, code):
 def test_bin_wrappers_are_current():
     names = sorted(f[:-3] for f in os.listdir(os.path.join(harness.REPO_PATH, 'bin'))
                    if f.endswith('.py'))
-    assert names == sorted(harness.EXAMPLES)
+    assert names == sorted(set(harness.EXAMPLES) - set(harness.NEW))
     r = harness.run('tools/gen_bin_wrappers.py', '--check')
     assert r.returncode == 0, r
 
