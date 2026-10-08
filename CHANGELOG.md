@@ -42,8 +42,9 @@ Breaking changes:
   specification, such as 000415, js220 or js220-000415.  `--serial-number`
   and `--serial_number` still work.  `-d` is a short form, except in
   read.py, where `-d` is `--duration`, and downsample_logging.py, where it
-  is `--downsample`.  The messages for no matching instrument, or several,
-  now come from pyjoulescope_driver, such as `No Joulescope found`.  These
+  is `--downsample`.  The examples that use one instrument, detector.py,
+  fuse.py, measure.py and monitor.py, now print the pyjoulescope_driver
+  message when none or several match, such as `No Joulescope found`.  These
   examples also ignore other USB devices that the driver lists, such as a
   MiniBitty.  Changed in detector.py, downsample_logging.py, dut_power.py,
   fuse.py (was fuse_js220.py), gpi_region.py, measure.py, monitor.py,

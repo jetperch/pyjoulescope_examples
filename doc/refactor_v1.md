@@ -664,7 +664,7 @@ support (5.5), and hotplug.py, record.py and the driver statistics.py
 
 12.2. Fixed, each with a test that failed first: 6.1, 6.2 (by the 6.3
 refactor), 6.4, 6.5, 6.7 for read_by_callback.py, 6.8, 6.9, 6.11 to 6.20,
-6.22 to 6.31 and 6.33.  6.10 is gone with the lock that caused it.
+6.22 to 6.31 and 6.33 to 6.39.  6.10 is gone with the lock that caused it.
 
 12.3. Not fixed, since no test on this bench can show them (2.7): 6.3's
 file writes on the driver thread in monitor.py, 6.6 (needs GPI wiring),
