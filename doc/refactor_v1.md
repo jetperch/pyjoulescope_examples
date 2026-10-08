@@ -331,6 +331,11 @@ rounds its buffer up to 10,000 samples and fills it, and these instruments
 keep streaming briefly after the duration.  This is separate from 6.7, which
 returned zeros after an early stop, such as on Ctrl-C.
 
+6.33. `downsample_logging.py` exits when an instrument disappears while it
+opens it, such as a JS320 that re-enumerates on a replug (see U.8).  The
+open raises TimeoutError, and the logger stops with a FAIL event, although
+it promises to survive unplug and temporary loss of USB communication.
+
 6.32. `timesync.py --out` writes its CSV header without a newline, so the
 header and the first row share a line.  Showing it needs two instruments
 that share a GPI0 signal, so per 2.7 it waits for a bench with that wiring.
@@ -366,6 +371,11 @@ reproducible on demand.
 U.5. joulescope 1.6.1 `scan(config='off')` keeps the statistics rate that the
 instrument already has on a JS220, but sets 2 Hz on a JS320.  The models
 should agree.
+
+U.8. A JS320 (firmware 1.1.10) sometimes drops off USB when a program reopens
+it about 2 seconds after closing it, so the open times out.  Seen in 2 of
+11 runs of the downsample_logging.py hotplug test.  WinUSB reports "A device
+which does not exist was specified" during the open.
 
 U.6. joulescope 1.6.1 `JlsWriter` records past `device.start(duration=...)`:
 for 1 second, 2,000,000 samples on a JS110 but 1,000,944 on a JS220 and

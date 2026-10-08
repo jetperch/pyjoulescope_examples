@@ -124,6 +124,22 @@ def test_hotplug(path, documents, device_path):
     assert len(t) >= 6, t
 
 
+@pytest.mark.xfail(strict=True, reason='6.33 exits when an instrument disappears while it opens')
+def test_hotplug_open_fails(path, documents, device_path):
+    # The instrument disappears while the logger opens it on the replug at 8 seconds,
+    # then appears again at 10.5 seconds.
+    env, log_dir = documents
+    r = harness.run(path, '--time-format', 'relative', env=env, visible=device_path,
+                    hotplug='add@3,remove@6,add@8,remove@9.5,add@10.5', open_fail='2',
+                    interrupt_after=14)
+    assert r.interrupted and not r.killed, r
+    assert r.returncode == 0, r
+    txt, csv = _logs(log_dir)[0]
+    assert ' FAIL ' not in txt
+    t = [float(row.split(',')[0]) for row in _rows(csv[0])]
+    assert t[-1] > 11, t  # logging again after the instrument reappears
+
+
 def test_device_filter(path, documents, several_devices):
     env, log_dir = documents
     target = sorted(several_devices.split(','))[-1]

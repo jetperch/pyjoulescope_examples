@@ -159,6 +159,23 @@ def test_hotplug(tmp_path, device_path):
                        f'topic @/!remove {device_path}', 'list []']
 
 
+def test_open_fail(tmp_path, device_path):
+    code = f"""
+from pyjoulescope_driver import Driver
+with Driver() as d:
+    for k in range(3):
+        try:
+            d.open("{device_path}", mode="restore")
+            d.close("{device_path}")
+            print("ok", flush=True)
+        except TimeoutError as ex:
+            print("fail", flush=True)
+"""
+    r = harness.run(_script(tmp_path, code), visible=device_path, open_fail='2')
+    assert r.returncode == 0, r
+    assert r.lines == ['ok', 'fail', 'ok']
+
+
 def test_jls_v2(jls_v2):
     from pyjls import Reader
     with Reader(str(jls_v2)) as r:

@@ -34,6 +34,10 @@ subscribers, the same as the driver does for a USB hotplug.  It does not
 stop the device, so a stream continues, unlike a real unplug.  The
 visible specification must list full device paths.
 
+When JOULESCOPE_EXAMPLES_OPEN_FAIL is set, such as "2", those calls to
+Driver.open, counting from 1, raise TimeoutError, as when an instrument
+disappears while it opens.
+
 When JOULESCOPE_EXAMPLES_DOCUMENTS is set, it also stands in for the
 user's Documents folder, so that examples that write there, such as
 downsample_logging.py, never touch the real one.
@@ -45,6 +49,7 @@ import time
 
 _SPEC = os.environ.get('JOULESCOPE_EXAMPLES_VISIBLE')
 _HOTPLUG = os.environ.get('JOULESCOPE_EXAMPLES_HOTPLUG')
+_OPEN_FAIL = os.environ.get('JOULESCOPE_EXAMPLES_OPEN_FAIL')
 _DOCUMENTS = os.environ.get('JOULESCOPE_EXAMPLES_DOCUMENTS')
 
 
@@ -63,9 +68,12 @@ def _documents_install(path):
     shell.SHGetFolderPath = fn
 
 
-def _install(spec, hotplug=None):
+def _install(spec, hotplug=None, open_fail=None):
     import pyjoulescope_driver
     from pyjoulescope_driver import DevicePath, device_filter
+
+    open_fail = [int(x) for x in (open_fail or '').split(',') if x.strip()]
+    opens = [0]
 
     events = []  # (time, 'add' or 'remove')
     for item in (hotplug or '').split(','):
@@ -123,6 +131,12 @@ def _install(spec, hotplug=None):
                 w.active = False
             return super().finalize(timeout)
 
+        def open(self, device_prefix, mode=None, timeout=None):
+            opens[0] += 1
+            if opens[0] in open_fail:
+                raise TimeoutError(f'jsdrv_open timed out | {device_prefix} (simulated)')
+            return super().open(device_prefix, mode, timeout)
+
     def hotplug_run():
         t_start = time.monotonic()
         device_paths = [p.strip() for p in spec.split(',') if p.strip()]
@@ -141,6 +155,6 @@ def _install(spec, hotplug=None):
 
 
 if _SPEC is not None:
-    _install(_SPEC.strip(), _HOTPLUG)
+    _install(_SPEC.strip(), _HOTPLUG, _OPEN_FAIL)
 if _DOCUMENTS:
     _documents_install(_DOCUMENTS)
