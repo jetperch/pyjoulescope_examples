@@ -138,6 +138,10 @@ def run():
                 print(f'Unsupported device {device_path}: ignore')
                 continue
 
+        if not opened:
+            print('No JS220 or JS320 found')
+            return 1
+
         verbose('Monitor each device')
         try:
             while True:

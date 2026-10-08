@@ -98,7 +98,7 @@ Fixes:
   file (was JS110 on every model), record on a JS110 (was KeyError), and
   record 120 seconds without `--duration` (was TypeError).
 * timesync.py: exit cleanly after skipping an unsupported instrument (was
-  RuntimeError).
+  RuntimeError), and exit 1 without a JS220 or JS320 (waited forever).
 * trigger_out.py: detect on the `--signal` given (always used current),
   and start with the trigger output low (started high).
 * windowed_accum.py: run with joulescope 1.6 (was ImportError for

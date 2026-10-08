@@ -35,7 +35,6 @@ def test_invalid(path):
     assert r.returncode == 2, r
 
 
-@pytest.mark.xfail(strict=True, reason='6.35 waits forever with no instrument')
 def test_no_device(path, tmp_path):
     r = harness.run(path, '--out', 'out.csv', cwd=tmp_path, timeout=10)
     assert not r.interrupted, r
@@ -46,14 +45,15 @@ def test_no_device(path, tmp_path):
 def test_device(path, device_path, tmp_path):
     r = harness.run(path, '-v', '--vref', 'external', cwd=tmp_path, visible=device_path,
                     interrupt_after=2)
-    assert r.interrupted and not r.killed, r
-    assert r.returncode == 0, r
     assert r.lines[:2] == ['Find the connected devices', f"Found devices: ['{device_path}']"]
-    assert r.lines[-2:] == ['Monitor each device', 'Closing']
     if device_path.model == 'js110':
-        assert r.lines[3] == f'Unsupported device {device_path}: ignore'
+        assert not r.interrupted, r
+        assert r.returncode == 1, r
+        assert r.lines[3:] == [f'Unsupported device {device_path}: ignore', 'No JS220 or JS320 found']
     else:
-        assert r.lines[3] == 'Monitor each device'
+        assert r.interrupted and not r.killed, r
+        assert r.returncode == 0, r
+        assert r.lines[3:] == ['Monitor each device', 'Closing']
 
 
 def test_device_filter(path, several_devices):
