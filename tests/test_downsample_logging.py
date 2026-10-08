@@ -79,7 +79,7 @@ def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
     for option in ['--header', '--resume', '-r', '--downsample', '-d', '--frequency', '-f',
-                   '--duration', '--time-format', '--time_format']:
+                   '--duration', '--time-format', '--time_format', '--device']:
         assert option in r.stdout
 
 
@@ -122,6 +122,18 @@ def test_hotplug(path, documents, device_path):
     gaps = [b - a for a, b in zip(t[:-1], t[1:])]
     assert max(gaps) > 1.5, t  # unplugged from 6 to 8 seconds
     assert len(t) >= 6, t
+
+
+def test_device_filter(path, documents, several_devices):
+    env, log_dir = documents
+    target = sorted(several_devices.split(','))[-1]
+    r = harness.run(path, '--device', target.split('/')[-1], env=env, visible=several_devices,
+                    interrupt_after=4)
+    assert r.returncode == 0, r
+    assert r.lines[1] == 'Found one Joulescope'
+    txt, csv = _logs(log_dir)[0]
+    assert f'DEVICES : {target}\n' in txt
+    assert len(csv) == 1
 
 
 def test_device(path, documents, device_path):

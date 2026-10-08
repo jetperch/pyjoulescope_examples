@@ -151,6 +151,9 @@ def get_parser():
                    type=time64.duration_to_seconds,
                    help='The capture duration in float seconds. '
                    + 'Add a suffix for other units: s=seconds, m=minutes, h=hours, d=days')
+    p.add_argument('--device',
+                   help='The Joulescopes to log, such as "js220", "000415" or "js220-000415". '
+                        + 'Defaults to all Joulescopes, including those connected later.')
     p.add_argument('--time-format', '--time_format',
                    default='utc',
                    choices=['utc', 'relative'],
@@ -178,6 +181,7 @@ class Logger:
         self.frequency = args.frequency
         self._duration = args.duration
         self.time_format = args.time_format
+        self.device = args.device
         self._start_time_s = None
         self._f_event = None
         self._time_str = None
@@ -253,7 +257,7 @@ class Logger:
         self._quit = None
         os.makedirs(BASE_PATH, exist_ok=True)
         self.driver = Driver()
-        devices = sorted(self.driver.device_paths())
+        devices = self.driver.find_devices(self.device, brand='joulescope')
         self.log.info('Found %d Joulescopes', len(devices))
         print('Found ' + joulescope_count_to_str(len(devices)))
         if self.resume and self._on_resume(devices):
@@ -261,16 +265,16 @@ class Logger:
         else:
             self._on_new(devices)
 
-        for device in devices:
-            self._devices[device] = LoggerDevice(self, device, self._start_time_s)
-        self.driver.subscribe('@/!add', 'pub', self._on_device_added)
-        self.driver.subscribe('@/!remove', 'pub', self._on_device_removed)
+        # Calls _on_device_added for each connected device, then for each
+        # device added later, and _on_device_removed for each removal.
+        self.driver.device_watch(self._on_device_added, self._on_device_removed,
+                                 self.device, brand='joulescope')
 
-    def _on_device_added(self, topic, value):
-        self._resync.put(('device_added', value))
+    def _on_device_added(self, device_path):
+        self._resync.put(('device_added', device_path))
 
-    def _on_device_removed(self, topic, value):
-        self._resync.put(('device_removed', value))
+    def _on_device_removed(self, device_path):
+        self._resync.put(('device_removed', device_path))
 
     def _on_resync(self, resync):
         cmd, value = resync
