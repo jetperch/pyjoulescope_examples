@@ -62,7 +62,8 @@ def test_duration_updates(path, device_path, request):
     if device_path.model == 'js320':
         request.applymarker(pytest.mark.xfail(strict=True, reason=harness.U1))
     r = harness.run(path, '-d', 3, '-u', 1, visible=device_path)
-    assert [SUMMARY.match(x).group(1) for x in r.lines[3:-2]] == ['1', '2'], r
+    updates = [SUMMARY.match(x).group(1) for x in r.lines[3:-2]]
+    assert updates in (['1', '2'], ['1', '2', '3']), r  # the update at 3 s may arrive before the stop
 
 
 def test_ctrl_c(path, device_path):
