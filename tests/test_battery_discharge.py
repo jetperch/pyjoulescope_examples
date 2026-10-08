@@ -79,8 +79,6 @@ def test_statistics_rate(path, statistics_100hz):
     assert 2 <= len(r.lines) - 1 <= 7, r  # 2 Hz, then "Interrupted by user"
 
 
-def test_2hz(path, device_path, request):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason=harness.U1))
+def test_2hz(path, device_path):
     r = harness.run(path, -100, visible=device_path, interrupt_on=lambda out: out.count('\n') >= 3)
     assert [line.split(':')[0] for line in r.lines[:3]] == ['0.0', '0.5', '1.0']

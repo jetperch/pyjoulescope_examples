@@ -40,7 +40,6 @@ ENV_BENCH = 'JOULESCOPE_EXAMPLES_BENCH'
 ENV_EXCLUDE = 'JOULESCOPE_EXAMPLES_EXCLUDE'
 INTERRUPT_GRACE = 10.0  # seconds from Ctrl-C to kill
 SAMPLE_RATE = {'js110': 2_000_000, 'js220': 1_000_000, 'js320': 1_000_000}  # native, Hz
-U1 = 'U.1 joulescope 1.6.1 reports JS320 statistics time 8x too large'
 STATS_RATE = '6.30 inherits the statistics rate that another program left on a JS220'
 TRACEBACK = 'Traceback (most recent call last)'
 PLOT_SHOWN = 'FigureCanvasAgg is non-interactive, and thus cannot be shown'

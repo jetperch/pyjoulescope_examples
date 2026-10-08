@@ -54,9 +54,7 @@ def test_device(path, device_path):
     assert 'Warning' not in r.stderr, r
 
 
-def test_device_2hz(path, device_path, request):
-    if device_path.model == 'js320':
-        request.applymarker(pytest.mark.xfail(strict=True, reason=harness.U1))
+def test_device_2hz(path, device_path):
     r = harness.run(path, visible=device_path, interrupt_on=lambda out: out.count('\n') >= 4)
     times = [float(row[2]) for row in _parse(r)]
     assert times[:4] == [0.0, 0.5, 1.0, 1.5]

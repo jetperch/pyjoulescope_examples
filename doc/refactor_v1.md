@@ -375,10 +375,11 @@ U.1. joulescope 1.6.1 reports JS320 statistics `time.range` 8 times too
 large: `Device._on_stats` assumes a 2 MHz sample counter.  `statistics.py`
 prints `0.0, 4.0, 8.0` at 2 Hz on a JS320, and `0.0, 0.5, 1.0` on the JS110
 and JS220.
-Status 2026 Oct 8: still open.  `Device._on_stats` still uses
-`period = 1 / 2e6`, while the JS320 statistics report
-`time.sample_freq` as 16 MHz.  Using `time.sample_freq` would fix it.  The
-six U.1 tests still xfail.
+Status 2026 Oct 8: fixed in pyjoulescope 038dfbb, on the
+`fix/statistics_sample_freq` branch.  `Device._on_stats` assumed
+`period = 1 / 2e6`, while the JS320 statistics report `time.sample_freq`
+as 16 MHz.  It now uses `time.sample_freq`.  The six U.1 tests passed
+strictly as XPASS with the fix, so they no longer carry the xfail mark.
 
 U.2. pyjoulescope_driver 2.5.0 prints `in frame_id mismatch 0 != 1` to
 stderr when it opens a JS320, now that the native log level defaults to
@@ -732,7 +733,8 @@ firmware and FPGA 1.1.11:
   skipped and 6 xfailed (U.1), in 34 minutes.  U.4 did not occur in this
   run.
 * Fixed upstream: U.2 and U.5.
-* Still open: U.1, U.3, U.4, U.6, U.7 and U.8.  Each entry in section 6
+* Fixed afterwards in pyjoulescope: U.1.
+* Still open: U.3, U.4, U.6, U.7 and U.8.  Each entry in section 6
   has the evidence.
 * New: U.9, a JS320 that stops answering after a streaming program exits
   without closing it.
