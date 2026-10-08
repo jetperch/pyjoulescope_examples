@@ -283,7 +283,10 @@ class Logger:
         elif cmd == 'device_added':
             if value in self._devices:
                 return
-            self._devices[value] = LoggerDevice(self, value, self._start_time_s)
+            try:
+                self._devices[value] = LoggerDevice(self, value, self._start_time_s)
+            except Exception as ex:  # such as removed while opening, so wait for it to return
+                self.on_event('DEVICE', f'OPEN FAILED {value}: {ex}')
         elif cmd == 'device_removed':
             if value in self._devices:
                 self._devices.pop(value).close()
@@ -393,7 +396,11 @@ class LoggerDevice:
                     break
         self._f_csv = open(fname, 'at+')
         d = parent.driver
-        d.open(device, mode='restore')
+        try:
+            d.open(device, mode='restore')
+        except Exception:
+            self._f_csv.close()
+            raise
         if model == 'js110':
             if parent.frequency != 2:
                 print(f'JS110 only supports frequency 2.  Ignoring frequency {parent.frequency}')

@@ -60,7 +60,9 @@ Fixes:
 
 * downsample_logging.py: `--duration` works (was AttributeError), and
   `--resume` continues charge and energy from their last values (was from
-  the current_min and current_max columns).
+  the current_min and current_max columns).  It also keeps logging when an
+  instrument disappears while it opens, and resumes when it returns.  It
+  previously exited.
 * monitor.py: write voltage in the voltage columns (was current), exit 1
   when no Joulescope is connected (was 0), record 50 Hz statistics on a
   JS110 (was 100 Hz), and no longer allocate an unused 500 MB buffer or

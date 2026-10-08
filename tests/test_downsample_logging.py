@@ -115,8 +115,10 @@ def test_hotplug(path, documents, device_path):
     assert r.lines[1] == 'Found no Joulescopes'
     txt, csv = _logs(log_dir)[0]
     events = [x.split(' ', 1)[1] for x in txt.splitlines() if ' DEVICE' in x]
-    assert events == ['DEVICES : ', f'DEVICE : OPEN {device_path}', f'DEVICE : CLOSE {device_path}',
-                      f'DEVICE : OPEN {device_path}', f'DEVICE : CLOSE {device_path}']
+    assert events[:4] == ['DEVICES : ', f'DEVICE : OPEN {device_path}', f'DEVICE : CLOSE {device_path}',
+                          f'DEVICE : OPEN {device_path}']
+    # A JS320 may also drop off USB as it reopens (U.8), which adds OPEN FAILED, then OPEN.
+    assert events[-1] == f'DEVICE : CLOSE {device_path}'
     assert len(csv) == 1  # both connections log to the same file
     t = [float(row.split(',')[0]) for row in _rows(csv[0])]
     gaps = [b - a for a, b in zip(t[:-1], t[1:])]
@@ -124,7 +126,6 @@ def test_hotplug(path, documents, device_path):
     assert len(t) >= 6, t
 
 
-@pytest.mark.xfail(strict=True, reason='6.33 exits when an instrument disappears while it opens')
 def test_hotplug_open_fails(path, documents, device_path):
     # The instrument disappears while the logger opens it on the replug at 8 seconds,
     # then appears again at 10.5 seconds.
@@ -136,6 +137,7 @@ def test_hotplug_open_fails(path, documents, device_path):
     assert r.returncode == 0, r
     txt, csv = _logs(log_dir)[0]
     assert ' FAIL ' not in txt
+    assert f'DEVICE : OPEN FAILED {device_path}: jsdrv_open timed out' in txt
     t = [float(row.split(',')[0]) for row in _rows(csv[0])]
     assert t[-1] > 11, t  # logging again after the instrument reappears
 
