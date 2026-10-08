@@ -452,6 +452,38 @@ Status 2026 Oct 8: still open with JS320 firmware 1.1.11.  The hotplug
 sequence logged OPEN FAILED, with the same WinUSB error, in 2 of 8 runs.
 `downsample_logging.py` recovers (6.33).  Opening the JS320 every 2 seconds
 from a new process, with no stream in between, succeeded about 60 times.
+Investigation, 2026 Oct 8: a race between the reopen and Windows USB
+selective suspend.  The JS320 registry entry has `DeviceIdleEnabled` 1
+and `DefaultIdleTimeout` 2000 ms, from the MS OS 2.0 descriptors that
+firmware 1.1.4 added; the JS110 and JS220 have idle disabled.
+* Only a reopen 2 seconds after the close fails.  The hotplug test
+  failed in 11 of 36 runs with a 2.0 second gap, but in 0 of 12 with
+  1.5 seconds and 0 of 12 with 3.0 seconds.
+* The time from `device_open` to `ll_bulk_open` in the driver log, which
+  covers CreateFile and WinUsb_Initialize, shows the device state.  It
+  takes 0 to 1 ms when the JS320 is awake (1.5 s gap) and 32 to 35 ms
+  when it is suspended and resumes (3.0 s gap).  At 2.0 seconds, every
+  passing reopen took 32 to 35 ms and every failing reopen 22 to 25 ms:
+  the open arrived while the suspend was in progress.
+* The first bulk OUT transfer of the link request then fails with
+  ERROR_OPERATION_ABORTED (995) or ERROR_NO_SUCH_DEVICE (433).  Windows
+  logs Kernel-PnP event 1010, "Device USB\VID_16D0&PID_135ANB has
+  been surprise removed as it is reported as missing on the bus", and
+  the JS320 re-enumerates about 220 ms later.
+* The JS320 does not reboot: its boot history (`minibitty info
+  --verbose`) has no new entries after about 10 failures.  The firmware
+  only soft-disconnects at USB initialization, so the hub, not the
+  firmware, removed the device, as after a failed resume.
+* The driver sends the same topics in the example and in standalone
+  scripts, which did not fail in about 160 reopens.  Those reopens
+  arrived when the device was already suspended or still awake.
+Next steps: find why the JS320 fails a resume that follows the start of
+a suspend, which needs the firmware log or a USB analyzer, with the
+hotplug test as the reproduction.  The device runs firmware 1.1.11, but
+the local js320 checkout ends at 1.1.8.  minibitty does not implement
+the RM0477 erratic-error soft-disconnect recovery (ESUSP), which may be
+related.  Disabling selective suspend, or a longer idle timeout, would
+avoid or move the race, at a power cost.
 
 U.9. A JS320 (firmware 1.1.11) sometimes stops answering the sensor state
 request after a program that is streaming from it exits without closing
