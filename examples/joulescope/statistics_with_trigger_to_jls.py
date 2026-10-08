@@ -130,6 +130,7 @@ def run():
     args = get_parser().parse_args()
     signal.signal(signal.SIGINT, stop_fn)  # also quit on CTRL-C
     device = scan_require_one(config='auto')
+    s = None
     try:
         device.parameter_set('buffer_duration', 3.0)
         device.parameter_set('reduction_frequency', '1 Hz')
@@ -146,7 +147,8 @@ def run():
 
     finally:
         device.close()
-        s.close()
+        if s is not None:
+            s.close()
 
 
 if __name__ == '__main__':

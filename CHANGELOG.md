@@ -97,7 +97,9 @@ Fixes:
 * statistics_v1.py and capture_jls_v1.py: exit 1 after an error (was 0).
 * statistics_with_trigger_to_jls.py: record the instrument model in the JLS
   file (was JS110 on every model), record on a JS110 (was KeyError), and
-  record 120 seconds without `--duration` (was TypeError).
+  record 120 seconds without `--duration` (was TypeError), and report an
+  error that opening the instrument raises (was hidden by
+  UnboundLocalError).
 * timesync.py: exit cleanly after skipping an unsupported instrument (was
   RuntimeError), and exit 1 without a JS220 or JS320 (waited forever).
 * trigger_out.py: detect on the `--signal` given (always used current),
