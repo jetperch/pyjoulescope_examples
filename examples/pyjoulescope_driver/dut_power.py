@@ -60,7 +60,11 @@ def dut_power_query(device):
 def run():
     args = get_parser().parse_args()
     with Driver() as jsdrv:
-        for device_path in jsdrv.find_devices(args.device, brand='joulescope'):
+        device_paths = jsdrv.find_devices(args.device, brand='joulescope')
+        if not device_paths:
+            print('No Joulescope found')
+            return 1
+        for device_path in device_paths:
             with jsdrv.open(device_path, mode='restore') as device:
                 if args.state == '?':
                     print(f'{device_path}: {dut_power_query(device)}')

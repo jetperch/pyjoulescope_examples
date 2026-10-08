@@ -69,7 +69,7 @@ Fixes:
   instrument disappears while it opens, then resumes when it returns (it
   exited).
 * dut_power.py: exit with an error when given no argument (was
-  IndexError).
+  IndexError), and exit 1 when no Joulescope matches (was 0, silently).
 * fuse.py: exit 1 when no Joulescope is connected (was 0), and explain that
   the JS110 has no fuse (was RuntimeError).
 * jls_export_points.py: report an exceeded `--duration` in seconds (was
