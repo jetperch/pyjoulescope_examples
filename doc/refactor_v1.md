@@ -375,14 +375,22 @@ U.1. joulescope 1.6.1 reports JS320 statistics `time.range` 8 times too
 large: `Device._on_stats` assumes a 2 MHz sample counter.  `statistics.py`
 prints `0.0, 4.0, 8.0` at 2 Hz on a JS320, and `0.0, 0.5, 1.0` on the JS110
 and JS220.
+Status 2026 Oct 8: still open.  `Device._on_stats` still uses
+`period = 1 / 2e6`, while the JS320 statistics report
+`time.sample_freq` as 16 MHz.  Using `time.sample_freq` would fix it.  The
+six U.1 tests still xfail.
 
 U.2. pyjoulescope_driver 2.5.0 prints `in frame_id mismatch 0 != 1` to
 stderr when it opens a JS320, now that the native log level defaults to
 `error`.
+Status 2026 Oct 8: fixed.  The message is now a WARNING, below the default
+`error` level, and opening a JS320 prints nothing to stderr.
 
 U.3. pyjoulescope_driver 2.5.0 prints `pkt_index skip: expected 0, received
 8448` to stderr when a JS110 starts streaming, for example in
 `current_ranging_filter.py`.
+Status 2026 Oct 8: still open.  `current_ranging_filter.py` on a JS110
+prints four `pkt_index skip` lines in each of 3 runs.
 
 U.4. pyjoulescope_driver 2.5.0 intermittently crashes with an access
 violation (0xC0000005) in `Driver.finalize()` after a JS110 streamed.
@@ -391,24 +399,56 @@ then Ctrl-C after 2 seconds, crashes in 7 of 20 runs on Windows, as it
 exits its `with Driver()` block.  measure.py on a JS110 crashed once in
 about 40 runs, and a minimal script with the same topics did not crash in
 40 runs.  The JS220 and JS320 did not crash.
+Status 2026 Oct 8: still open, although pyjoulescope_driver 2.5.0 fixed a
+use-after-free in `Driver.finalize()` after a JS110 streamed.  The same
+command crashed in 5 of 20 runs through the test shim and 12 of 20 runs
+without it.  faulthandler places the crash in `Driver.finalize()`.  It did
+not occur in the full suite run.
 
 U.5. joulescope 1.6.1 `scan(config='off')` keeps the statistics rate that the
 instrument already has on a JS220, but sets 2 Hz on a JS320.  The models
 should agree.
+Status 2026 Oct 8: fixed by the pyjoulescope_driver 2.5.0 JS220 `defaults`
+open, which now restores the default settings.  After another program set
+100 Hz, both models report 2 Hz.  On the JS220, the first statistics value
+still has the old 0.01 second delta, in 3 of 3 runs.  The examples still
+set `reduction_frequency` themselves (6.30), which keeps them explicit.
 
 U.6. joulescope 1.6.1 `JlsWriter` records past `device.start(duration=...)`:
 for 1 second, 2,000,000 samples on a JS110 but 1,000,944 on a JS220 and
 1,027,296 on a JS320.  It writes the whole stream buffer update in which the
 duration ends.
+Status 2026 Oct 8: still open.  A 1 second `capture_jls.py` records
+2,000,000 samples on the JS110, 1,000,440 to 1,001,196 on the JS220 and
+1,027,296 on the JS320.
 
 U.7. pyjoulescope_driver 2.5.0 has no public table of the signals and their
 topics, so `read.py` imports the private `record._SIGNALS` and
 `record._signal_name_map`.
+Status 2026 Oct 8: still open.
 
 U.8. A JS320 (firmware 1.1.10) sometimes drops off USB when a program reopens
 it about 2 seconds after closing it, so the open times out.  Seen in 2 of
 11 runs of the downsample_logging.py hotplug test.  WinUSB reports "A device
 which does not exist was specified" during the open.
+Status 2026 Oct 8: still open with JS320 firmware 1.1.11.  The hotplug
+sequence logged OPEN FAILED, with the same WinUSB error, in 2 of 8 runs.
+`downsample_logging.py` recovers (6.33).  Opening the JS320 every 2 seconds
+from a new process, with no stream in between, succeeded about 60 times.
+
+U.9. A JS320 (firmware 1.1.11) sometimes stops answering the sensor state
+request after a program that is streaming from it exits without closing
+it.  Every later `defaults` open times out after 1 second: the driver logs
+`state_fetch: GET_INIT BUSY for 's'` for each of 20 retries, then
+`GET_INIT failed status=19`.  Opens with a longer timeout, or in `restore`
+mode, succeed at first, but later failed in `restore` mode as well.
+Publishing `s/sys/!reset` recovered it for a single open only, and
+`c/sys/!reset` (value 0) recovered it fully.  A hard kill of
+`record.py` after 3 seconds of streaming caused this in 1 of 8 runs.
+Three runs that crashed while writing a JLS file to `NUL` also left it in
+this state.  The same kill did not affect the JS110 or JS220.  The example
+tests close every instrument, so they do not show it, but an instrument
+left in this state fails the next test that opens it.
 
 
 ## 7. Regression checklist
@@ -672,8 +712,9 @@ file writes on the driver thread in monitor.py, 6.6 (needs GPI wiring),
 publishes with timeout=0, and 6.32 (needs two instruments sharing GPI0).
 tests/MANUAL.md covers the wiring and load cases.
 
-12.4. The upstream defects U.1 to U.8 remain.  The tests mark U.1 as
-`xfail` on the JS320.  U.4 can still crash a JS110 test intermittently.
+12.4. The upstream defects U.1 to U.8 remained as of 2026 Oct 7.  The
+tests mark U.1 as `xfail` on the JS320.  U.4 can still crash a JS110 test
+intermittently.  See 12.6 for the 2026 Oct 8 rebaseline.
 
 12.5. The section 11 criteria: 11.2, 11.4 and 11.5 hold.  For 11.1, the
 characterization tests ran on `main` code before each change; where an
@@ -681,3 +722,21 @@ approved decision or a fix changed behavior, the test changed first, in
 the same commit as the example.  For 11.3, the regression checklist holds
 for every example, except that a few error messages now come from the
 libraries, such as `No Joulescope found` (decision 8.7).
+
+12.6. Rebaseline, 2026 Oct 8, against the local pyjoulescope_driver 2.5.0
+(joulescope_driver c19dde7, built after that commit), joulescope 1.6.1
+(pyjoulescope 1f6653a), JS220 firmware 1.3.0 with FPGA 1.3.3, and JS320
+firmware and FPGA 1.1.11:
+
+* The full suite passed, with no example changes: 1166 passed, 55
+  skipped and 6 xfailed (U.1), in 34 minutes.  U.4 did not occur in this
+  run.
+* Fixed upstream: U.2 and U.5.
+* Still open: U.1, U.3, U.4, U.6, U.7 and U.8.  Each entry in section 6
+  has the evidence.
+* New: U.9, a JS320 that stops answering after a streaming program exits
+  without closing it.
+* The JS220 `defaults` open now restores the default settings instead of
+  keeping the previous program's settings.  No example relied on the old
+  behavior: dut_power.py, which must keep the instrument's state, already
+  opens with `mode='restore'`.
