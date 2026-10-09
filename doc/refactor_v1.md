@@ -586,6 +586,34 @@ Three runs that crashed while writing a JLS file to `NUL` also left it in
 this state.  The same kill did not affect the JS110 or JS220.  The example
 tests close every instrument, so they do not show it, but an instrument
 left in this state fails the next test that opens it.
+Root cause, 2026 Oct 9: each minibitty pubsub instance has a single
+state iterator (`src/pubsub.c`).  `state_get_init()` answers
+MB_ERROR_BUSY (status 19) while `state_iter.transaction_id` is nonzero,
+and only `state_get_next()` clears it, at the end of an iteration.
+Nothing clears an abandoned iteration: no timeout, no reset on link
+disconnect, and a new GET_INIT is always refused.  A host that sends
+GET_INIT and never finishes therefore leaves that instance BUSY until
+the device resets.
+* Deterministic reproduction on JS320 8W2A: killing the opening process
+  as the driver logs `GET_INIT for 's'` wedged the device in 5 of 5
+  runs, and as it logs `GET_INIT for 'c'` in 5 of 5 runs.
+* Unit test: `state_get_init_after_abandoned_iteration` in minibitty
+  `test/pubsub_test.c` (uncommitted) starts an iteration, abandons it,
+  and retries GET_INIT 21 times with a new transaction ID.  It fails
+  with status 19, as on the device.  The existing
+  `state_get_busy_error` test asserts the BUSY behavior for overlapping
+  requests.
+* How hosts abandon an iteration: a process killed or crashed during
+  open; the open API timeout (1 s default) expiring during the state
+  read; or the driver's own state fetch timeout, which moves on to the
+  next prefix (no such timeout occurred in about 690 opens logged
+  today).
+* Why a kill while streaming leads to it: after a host exits abruptly,
+  the next open spends about 500 ms re-establishing the link and can
+  lose its first sensor GET_INIT (250 ms retry), so it can reach the 1 s
+  open timeout during the sensor state read.  The process then exits
+  and abandons that iteration.  This slow first reopen occurred in 3 of
+  13 streaming kills.
 
 
 ## 7. Regression checklist
