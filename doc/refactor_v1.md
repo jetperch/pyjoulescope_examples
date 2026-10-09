@@ -623,6 +623,11 @@ the JS320 controller and FPGA sensor rebuilt and programmed, kills at
 the controller and sensor state reads, right after open, and while
 streaming produced no BUSY replies in 24 reopens, and 10 hard kills of a
 streaming `record.py` were each followed by 4 successful opens.
+The fix shipped in minibitty 0.10.2 (main e167af2) and JS320 firmware
+1.1.12.  On a production JS320 (31NB, controller, sensor and FPGA
+1.1.12), the same kills produced no BUSY replies in 24 reopens, and 10
+hard kills of a streaming `record.py` were followed by 40 of 40
+successful opens with no BUSY replies.
 
 
 ## 7. Regression checklist
