@@ -562,6 +562,16 @@ last SOF, was an artifact of its sampling rate.
   moves the sample point: OTG_DCFG, OTG_DCTL, OTG_GUSBCFG, OTG_PCGCCTL,
   OTG_GCCFG and the USBPHYC clock controls do not cover it, and the
   specification requires reversion by 3.125 ms anyway.
+Status 2026 Oct 9: mitigated in the host driver, joulescope_driver
+a607874 on the `feature/open_reenumerate_retry` branch, based on the U.4
+fix.  When a device is removed while an open waits, the frontend extends
+the open timeout to at least 3 s after the removal and sends the open
+again when the device returns.  The Windows backend also retries
+WinUsb_Initialize on ERROR_BUSY, which occurred once in about 340 runs
+while Windows resumed the JS320.  The hotplug stress test then passed
+80 of 80 runs; the race occurred in 2 of them, and both opens completed
+on the re-added device in under 1 s.  Applications that watch device
+additions and removals still see the removal and addition.
 
 U.9. A JS320 (firmware 1.1.11) sometimes stops answering the sensor state
 request after a program that is streaming from it exits without closing
