@@ -938,3 +938,29 @@ a bench with only a JS320 (8W2A):
 * U.9 did not occur in 6 hard kills of a streaming `record.py`, against
   1 in 8 before, which is too few to call it fixed.
 * U.3 and U.4 need a JS110 to retest.
+
+12.8. Retest, 2026 Oct 9, against joulescope 1.7.0 (pyjoulescope
+14920b7), pyjoulescope_driver 2.5.0 (joulescope_driver 6e7f125),
+JS110 000197, JS220 000043 (firmware 1.3.0, FPGA 1.3.3) and JS320 31NB
+(firmware and FPGA 1.1.12):
+
+* The full suite: 1171 passed, 1 failed and 55 skipped, in 34 minutes.
+  The skips need a load current or a feature the JS110 lacks.
+* The failure was a race in `accumulators.py`: on a JS220, the
+  statistics at the end of `--duration` arrived after the stop and
+  printed an update after `Capture duration completed.`  The original
+  example has the same race.  It now ignores updates after the stop, and
+  keeps the statistics for the final summary.  The accumulators tests
+  then passed 46 of 46, and the duration tests 45 of 45 more.
+* U.4 is fixed: the Ctrl-C sweep of `monitor.py` on the JS110, 0.6 to
+  3.0 seconds three times plus 40 runs at 2 seconds, crashed in 0 of 79
+  runs.
+* U.9 is fixed on a production JS320 with firmware 1.1.12 (section 6).
+* U.3 is still open: `current_ranging_filter.py` on the JS110 prints 4
+  `pkt_index skip` lines in each of 3 runs.  Each stream start first
+  delivers about 14 stale frames that continue the previous stream's
+  packet index (for example 8434 to 8447 after a stream that ended at
+  8433), then the new stream starts at 0.  The driver resets
+  `packet_index` to 0 on stream enable (`js110_usb.c`) but does not
+  discard these frames, so about 1,800 samples from the previous stream
+  start the new one.
