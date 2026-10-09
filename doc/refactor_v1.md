@@ -484,6 +484,38 @@ the local js320 checkout ends at 1.1.8.  minibitty does not implement
 the RM0477 erratic-error soft-disconnect recovery (ESUSP), which may be
 related.  Disabling selective suspend, or a longer idle timeout, would
 avoid or move the race, at a power cost.
+Root cause, 2026 Oct 9, on a JS320 (8W2A, firmware 1.1.11) with a J-Link
+polling the STM32H7S3 USB OTG HS registers (DSTS, DCFG) at about 1,800
+samples per second during the hotplug test, with no firmware changes.
+The test failed in 11 of 60 runs.
+* After the close, the JS320 stays awake.  About 2.003 s after the close,
+  the reopen and Windows' 2 s selective-suspend timer coincide: the host
+  stops SOFs, then drives the resume K for about 21 ms.  In 14 runs the
+  open came first and no suspend occurred.
+* The JS320 never reaches suspend (DSTS.SUSPSTS stays 0) in any run.
+* All 10 failures in the second set of 40 runs, and the one failure in
+  the first 20, have the resume K start within about 0.6 ms of the last
+  SOF.  Passing runs with a suspend had the K start 0.55 to 9.3 ms after
+  the last SOF.
+* In every failure, the USB core raises a USB reset 20.7 to 21.6 ms
+  after the K starts, at the end of the resume: the firmware's USBRST
+  handler clears DCFG.DAD to 0, and DSTS.ENUMSPD reports full speed.
+  The line shows no 10 ms SE0 and no high-speed chirp, so the host did
+  not reset the port.  The host then sends to the old address at high
+  speed, the first bulk transfer fails, the core suspends, and about
+  100 ms later Windows resets the port, removes the device ("missing on
+  the bus") and enumerates it again at high speed.
+* The firmware did not reboot: the boot history only gained the
+  HARDWARE_RESET entries from the J-Link connects.
+* The firmware's suspend and resume handling plays no part: the core
+  reports a reset, and the firmware handles it as a reset.  The lost
+  event handling in usbd_isr_handler and the missing erratic-error
+  recovery are separate.
+So the trigger is a selective suspend that Windows cancels within about
+0.6 ms, and the cause is the STM32H7S OTG HS core treating the end of a
+resume that arrives before its 3 ms suspend detection as a bus reset,
+without the high-speed handshake.  No published erratum was found.  A
+USB protocol analyzer would confirm that the host signaling is legal.
 
 U.9. A JS320 (firmware 1.1.11) sometimes stops answering the sensor state
 request after a program that is streaming from it exits without closing
