@@ -552,6 +552,16 @@ last SOF, was an artifact of its sampling rate.
   WKUPINT, then ENUMDNE at full speed after a high-speed session) and,
   for example, soft-disconnect so that Windows enumerates it again
   sooner.  The open that hit the window still fails.
+* Checked against the official USB 2.0 specification: section 7.1.7.7
+  says "The host may signal resume (TDRSMDN) at any time", so the host
+  behavior is legal.  Section 7.1.7.6 defines the sample point only for
+  J (continue to suspend) and SE0 (reset), but requires a device
+  suspended from high speed to return to high speed at the end of a
+  resume, so the JS320 should treat this K as a resume.
+* RM0477 has no register that delays the reversion to full speed or
+  moves the sample point: OTG_DCFG, OTG_DCTL, OTG_GUSBCFG, OTG_PCGCCTL,
+  OTG_GCCFG and the USBPHYC clock controls do not cover it, and the
+  specification requires reversion by 3.125 ms anyway.
 
 U.9. A JS320 (firmware 1.1.11) sometimes stops answering the sensor state
 request after a program that is streaming from it exits without closing
