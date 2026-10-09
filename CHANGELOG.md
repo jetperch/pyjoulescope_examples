@@ -26,7 +26,7 @@ This file contains the list of changes made to pyjoulescope_examples.
 
 Breaking changes:
 
-* Requires Python 3.12 or newer, joulescope 1.6.1 or newer and
+* Requires Python 3.12 or newer, joulescope 1.7.0 or newer and
   pyjoulescope_driver 2.5.0 or newer.
 * capture_all.py records JLS v2 files instead of JLS v1, with the same
   file names.  Read them with pyjls, or plot them with

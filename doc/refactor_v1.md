@@ -375,11 +375,11 @@ U.1. joulescope 1.6.1 reports JS320 statistics `time.range` 8 times too
 large: `Device._on_stats` assumes a 2 MHz sample counter.  `statistics.py`
 prints `0.0, 4.0, 8.0` at 2 Hz on a JS320, and `0.0, 0.5, 1.0` on the JS110
 and JS220.
-Status 2026 Oct 8: fixed in pyjoulescope 038dfbb, on the
-`fix/statistics_sample_freq` branch.  `Device._on_stats` assumed
-`period = 1 / 2e6`, while the JS320 statistics report `time.sample_freq`
-as 16 MHz.  It now uses `time.sample_freq`.  The six U.1 tests passed
-strictly as XPASS with the fix, so they no longer carry the xfail mark.
+Status 2026 Oct 9: fixed in pyjoulescope 1.7.0 (14920b7).  `Device._on_stats`
+assumed `period = 1 / 2e6`, while the JS320 statistics report
+`time.sample_freq` as 16 MHz; it now uses `time.sample_freq`.  The six U.1
+tests passed strictly as XPASS with the fix, so they no longer carry the
+xfail mark.
 
 U.2. pyjoulescope_driver 2.5.0 prints `in frame_id mismatch 0 != 1` to
 stderr when it opens a JS320, now that the native log level defaults to
@@ -880,3 +880,19 @@ firmware and FPGA 1.1.11:
   keeping the previous program's settings.  No example relied on the old
   behavior: dut_power.py, which must keep the instrument's state, already
   opens with `mode='restore'`.
+
+12.7. Retest, 2026 Oct 9, against joulescope 1.7.0 (pyjoulescope
+14920b7) and pyjoulescope_driver 2.5.0 (joulescope_driver a607874), on
+a bench with only a JS320 (8W2A):
+
+* The full suite passed: 600 passed and 63 skipped, in 16 minutes.  The
+  skips need a second instrument, a JS110, or a load current.  The
+  JS110 and JS220 paths were not exercised, including the 1.7.0 change
+  to the JS110 statistics `source` key.
+* `requirements.txt` and the CHANGELOG now require joulescope 1.7.0.
+* U.6 is still open: a 1 second `capture_jls.py` records 1,027,296
+  samples on the JS320.
+* U.7 is still open: `read.py` imports `record._SIGNALS`.
+* U.9 did not occur in 6 hard kills of a streaming `record.py`, against
+  1 in 8 before, which is too few to call it fixed.
+* U.3 and U.4 need a JS110 to retest.
