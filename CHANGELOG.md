@@ -22,7 +22,7 @@ This file contains the list of changes made to pyjoulescope_examples.
 
 ## 1.0.0
 
-2026 Oct [in progress]
+2026 Oct 9
 
 Breaking changes:
 
