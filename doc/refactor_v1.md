@@ -516,6 +516,42 @@ So the trigger is a selective suspend that Windows cancels within about
 resume that arrives before its 3 ms suspend detection as a bus reset,
 without the high-speed handshake.  No published erratum was found.  A
 USB protocol analyzer would confirm that the host signaling is legal.
+Correction and root cause, 2026 Oct 9, with a Beagle USB 5000 v2 on the
+JS320 link and a JS320 firmware build with trace logging
+(`config.trace.log: true`, no code changes), on Windows with an Intel
+xHCI.  The J-Link estimate above, a resume within about 0.6 ms of the
+last SOF, was an artifact of its sampling rate.
+* The failure does not need a hub.  With the JS320 on a Genesys hub
+  (05E3:0610) it failed in 2 of 34 runs, and on an xHCI root port in 3
+  of 40 and 5 of 40 runs.  The hub drives a 20 ms resume, and the root
+  port a 50 ms resume.
+* Windows suspends the port when its 2 s idle timer expires (behind the
+  hub, with SET_PORT_FEATURE(PORT_SUSPEND)), and the reopen immediately
+  resumes it.  The failure depends only on when the resume K starts
+  after the last SOF: 3.13 to 3.51 ms in all 10 failures, and 3.62 ms or
+  later in all 30 passing runs that suspended.
+* That interval is the USB 2.0 reset and suspend detection window.
+  After 3.0 to 3.125 ms of idle, a high-speed device reverts to full
+  speed and samples the line 100 to 875 us later: SE0 means reset, J
+  means suspend.
+* The JS320 USB core reports nothing for a resume that starts in that
+  window: no WKUPINT and no USBSUSP.  It stays in full-speed mode through
+  the resume.  When the resume ends, the host's high-speed terminations
+  make the line read SE0 to a full-speed device, so the core raises
+  USBRST and drives the high-speed chirp K for 2 ms.  The host does not
+  answer, because it did not reset the port, so the core enumerates at
+  full speed (ENUMDNE) and then suspends.  The Beagle shows the chirp K
+  and the full-speed J, and the trace shows USBD reset, USBD enum and
+  USBD suspend, 51, 56 and 61 ms after the resume starts.
+* A resume that starts after the window works: from about 3.6 ms the
+  core raises WKUPINT (was_suspended 0), and after about 6 ms USBSUSP and
+  WKUPINT (was_suspended 1), and the device returns to high speed.
+* ES0596 lists no OTG_HS erratum for this.  The firmware cannot restore
+  high speed by itself, because only a host reset starts the chirp
+  handshake; it can detect the condition (USBRST with no preceding
+  WKUPINT, then ENUMDNE at full speed after a high-speed session) and,
+  for example, soft-disconnect so that Windows enumerates it again
+  sooner.  The open that hit the window still fails.
 
 U.9. A JS320 (firmware 1.1.11) sometimes stops answering the sensor state
 request after a program that is streaming from it exits without closing
