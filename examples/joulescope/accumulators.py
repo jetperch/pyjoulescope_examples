@@ -74,6 +74,8 @@ class Accumulators:
 
     def _on_statistics(self, statistics):
         self._statistics = statistics
+        if self._quit:  # statistics can arrive after the stop, keep them for the summary
+            return
         duration_now = self._statistics['time']['range']['value'][0]
         if duration_now >= self._update_previous + self._update_interval:
             print(self._statistics_to_user_str())
