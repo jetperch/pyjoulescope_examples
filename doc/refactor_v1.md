@@ -614,6 +614,15 @@ the device resets.
   open timeout during the sensor state read.  The process then exits
   and abandons that iteration.  This slow first reopen occurred in 3 of
   13 streaming kills.
+Status 2026 Oct 9: fixed.  minibitty 041413e (branch
+`fix/pubsub_state_abandoned`) lets a GET_INIT from the origin of the
+active iteration restart it, so a host session can always recover an
+iteration its predecessor abandoned; other origins still get BUSY.
+joulescope_driver 6e7f125 raises the default open timeout to 3 s.  With
+the JS320 controller and FPGA sensor rebuilt and programmed, kills at
+the controller and sensor state reads, right after open, and while
+streaming produced no BUSY replies in 24 reopens, and 10 hard kills of a
+streaming `record.py` were each followed by 4 successful opens.
 
 
 ## 7. Regression checklist
