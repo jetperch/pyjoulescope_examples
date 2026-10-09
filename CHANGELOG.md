@@ -83,6 +83,10 @@ Fixes:
   stream samples that it never reads on a JS220 or JS320.
 * read.py: exit 1 with the error when the instrument does not have a
   requested signal, such as `--signals T` on a JS110 (waited forever).
+* read.py: fill dropped samples with NaN on the JS220 and JS320 (left
+  them unset), return the correct `utc_range` on the JS220 and JS320 (was
+  minutes early), and stop with the error when processing the streaming
+  data fails (ignored it, or waited forever).  #15 #16
 * read_by_callback.py: return exactly `--duration` of samples (was up to
   9,999 more on the JS220 and JS320), and after Ctrl-C, return only the
   samples received (was the whole buffer, padded with zeros).

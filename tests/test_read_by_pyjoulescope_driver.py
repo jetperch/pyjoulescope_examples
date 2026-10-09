@@ -138,6 +138,31 @@ def test_unavailable_signal(path, device_path):
     assert 's/gpi/7/ctrl' in r.stdout
 
 
+def test_dropped_samples(path, device_path):
+    # GitHub #15: dropped samples read as NaN for float signals.
+    r = harness.run(path, '-d', 0.5, '--no-progress', visible=device_path, timeout=10,
+                    data_fault='drop@3')
+    assert r.returncode == 0, r
+    skips = [x for x in r.lines if x.startswith('Skip ')]
+    assert sorted(x.split(':')[0] for x in skips) == [f'Skip {device_path}.current',
+                                                      f'Skip {device_path}.voltage'], r
+    data = _parse([x for x in r.lines if x not in skips])
+    for value in data.values():
+        m = re.match(r'^ignored (\d+) NaNs in (\d+) samples', value['msg'])
+        assert m, r
+        nan_count, sample_count = int(m.group(1)), int(m.group(2))
+        assert 0 < nan_count < 0.25 * sample_count, r
+
+
+def test_data_error(path, device_path):
+    # GitHub #16: an error in the data callback stops the read.
+    r = harness.run(path, '-d', 0.5, '--no-progress', visible=device_path, timeout=10,
+                    data_fault='corrupt@3')
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert 'TypeError' in r.stderr, r
+
+
 def test_several_devices(path, several_devices):
     paths = several_devices.split(',')
     r = harness.run(path, '-d', 0.3, '--no-progress', visible=several_devices, timeout=15)

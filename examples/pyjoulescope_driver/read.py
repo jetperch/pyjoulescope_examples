@@ -144,6 +144,14 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
         read_state[signal_full] = signal_state
 
         def data_fn(topic, value):
+            # The driver calls this from its own thread, where an exception
+            # would only be logged, so pass it to read() to raise.
+            try:
+                on_data(value)
+            except Exception as ex:
+                queue.put(ex)
+
+        def on_data(value):
             # ['sample_id', 'utc', 'field_id', 'index', 'sample_rate', 'decimate_factor', 'time_map', 'data']
             # print(list(value.keys()))
             decimate_factor = value['decimate_factor']
@@ -165,12 +173,12 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
                 return
             elif sample_id > sample_id_expect:
                 print(f'Skip {device_path}.{signal_name}: {sample_id} > {sample_id_expect}')
-                if samples.dtype in [np.float32, np.float64, float]:
-                    signal_state['samples'][sample_id_expect:sample_id] = np.nan
-                elif is_digital:
-                    signal_state['samples'][sample_id_expect//8:sample_id//8] = 0
-                else:
-                    signal_state['samples'][sample_id_expect:sample_id] = 0
+                k0 = signal_state['sample_id_range'][0]
+                g0, g1 = sample_id_expect - k0, sample_id - k0
+                if is_digital:
+                    g0, g1 = g0 // 8, g1 // 8
+                is_float = samples.dtype in [np.float32, np.float64, float]
+                signal_state['samples'][g0:g1] = np.nan if is_float else 0
             sample_count = len(samples)
             sample_id_offset = sample_id - signal_state['sample_id_range'][0]
             if is_digital:
@@ -205,8 +213,8 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
                 samples = np.unpackbits(samples, bitorder='little')
             s0 = int(n * ((u0 - a0) / (a1 - a0)))
             s1 = int(n * ((u1 - a0) / (a1 - a0)))
-            z0 = int(((s0 - k0) / n) * (a1 - a0)) + a0
-            z1 = int(((s1 - k0) / n) * (a1 - a0)) + a0
+            z0 = int((s0 / n) * (a1 - a0)) + a0
+            z1 = int((s1 / n) * (a1 - a0)) + a0
             sample_id_range = [k0 + s0, k0 + s1]
             signal_state['sample_id_range_decimated'] = sample_id_range
             signal_state['sample_id_range'] = [s * signal_state['decimate_factor'] for s in sample_id_range]
@@ -234,9 +242,11 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
 
     while True:
         try:
-            queue.get(timeout=0.1)
+            item = queue.get(timeout=0.1)
         except Empty:
             continue
+        if isinstance(item, Exception):
+            raise item
         duration_now = time_info()['duration']
         if duration_now >= duration:
             on_progress(1.0)

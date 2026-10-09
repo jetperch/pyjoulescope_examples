@@ -36,6 +36,7 @@ SHIM_PATH = os.path.join(TESTS_PATH, 'shim')
 ENV_VISIBLE = 'JOULESCOPE_EXAMPLES_VISIBLE'
 ENV_HOTPLUG = 'JOULESCOPE_EXAMPLES_HOTPLUG'
 ENV_OPEN_FAIL = 'JOULESCOPE_EXAMPLES_OPEN_FAIL'
+ENV_DATA_FAULT = 'JOULESCOPE_EXAMPLES_DATA_FAULT'
 ENV_BENCH = 'JOULESCOPE_EXAMPLES_BENCH'
 ENV_EXCLUDE = 'JOULESCOPE_EXAMPLES_EXCLUDE'
 INTERRUPT_GRACE = 10.0  # seconds from Ctrl-C to kill
@@ -124,7 +125,7 @@ class Result:
         ])
 
 
-def environ(visible=None, env=None, hotplug=None, open_fail=None):
+def environ(visible=None, env=None, hotplug=None, open_fail=None, data_fault=None):
     """The environment for an example.
 
     :param visible: The device specification for the devices the example
@@ -134,9 +135,10 @@ def environ(visible=None, env=None, hotplug=None, open_fail=None):
     :param hotplug: The simulated hotplug events for the visible devices,
         such as "add@2,remove@5".  See tests/shim/sitecustomize.py.
     :param open_fail: The Driver.open calls that fail, such as "2".
+    :param data_fault: The data messages to drop or corrupt, such as "drop@3".
     """
     e = dict(os.environ)
-    for k in [ENV_VISIBLE, ENV_HOTPLUG, ENV_OPEN_FAIL]:
+    for k in [ENV_VISIBLE, ENV_HOTPLUG, ENV_OPEN_FAIL, ENV_DATA_FAULT]:
         e.pop(k, None)
     e['PYTHONUNBUFFERED'] = '1'
     e['PYTHONIOENCODING'] = 'utf-8'
@@ -151,6 +153,8 @@ def environ(visible=None, env=None, hotplug=None, open_fail=None):
             e[ENV_HOTPLUG] = hotplug
         if open_fail:
             e[ENV_OPEN_FAIL] = open_fail
+        if data_fault:
+            e[ENV_DATA_FAULT] = data_fault
         e['PYTHONPATH'] = os.pathsep.join([SHIM_PATH] + [p for p in [e.get('PYTHONPATH')] if p])
     return e
 
@@ -182,7 +186,8 @@ def _interrupt(process):
 
 
 def run(path, *args, cwd=None, timeout=60.0, interrupt_after=None, interrupt_on=None,
-        visible='', env=None, stdin=None, hotplug=None, open_fail=None):
+        visible='', env=None, stdin=None, hotplug=None, open_fail=None,
+        data_fault=None):
     """Run an example as a subprocess.
 
     :param path: The example path, relative to the repository.
@@ -202,6 +207,8 @@ def run(path, *args, cwd=None, timeout=60.0, interrupt_after=None, interrupt_on=
     :param hotplug: The simulated hotplug events for the visible devices,
         such as "add@2,remove@5".  See tests/shim/sitecustomize.py.
     :param open_fail: The Driver.open calls that fail, such as "2".
+    :param data_fault: The data messages to drop or corrupt, such as
+        "drop@3".  See tests/shim/sitecustomize.py.
     :return: The :class:`Result`.
     """
     args = [str(a) for a in args]
@@ -224,7 +231,7 @@ def run(path, *args, cwd=None, timeout=60.0, interrupt_after=None, interrupt_on=
         interrupt_on = lambda out: text in out
 
     t_start = time.monotonic()
-    p = subprocess.Popen(cmd, cwd=REPO_PATH if cwd is None else cwd, env=environ(visible, env, hotplug, open_fail),
+    p = subprocess.Popen(cmd, cwd=REPO_PATH if cwd is None else cwd, env=environ(visible, env, hotplug, open_fail, data_fault),
                          stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          **kwargs)
     stdout, stderr = [], []

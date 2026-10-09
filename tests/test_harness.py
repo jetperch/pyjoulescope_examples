@@ -176,6 +176,45 @@ with Driver() as d:
     assert r.lines == ['ok', 'fail', 'ok']
 
 
+_DATA = """
+import queue
+from pyjoulescope_driver import Driver
+q = queue.Queue()
+fn = lambda topic, value: q.put(value)
+with Driver() as d:
+    d.open("{0}")
+    d.subscribe("{0}/s/i/!data", ["pub"], fn)
+    d.publish("{0}/s/i/ctrl", 1)
+    values = [q.get(timeout=5) for _ in range(4)]
+    d.unsubscribe("{0}/s/i/!data", fn)
+    d.close("{0}")
+for v in values:
+    print(v["sample_id"], None if v["data"] is None else len(v["data"]))
+"""
+
+
+def _data(lines):
+    return [[int(x) if x != 'None' else None for x in line.split()] for line in lines]
+
+
+@pytest.mark.parametrize('fault', ['drop@2', 'corrupt@2'])
+def test_data_fault(tmp_path, device_path, fault):
+    r = harness.run(_script(tmp_path, _DATA.format(device_path)), visible=device_path,
+                    data_fault=fault, timeout=15)
+    assert r.returncode == 0, r
+    v = _data(r.lines)
+    assert v[0][1] is not None
+    if fault.startswith('drop'):
+        # sample_id counts samples before decimation, so compare the ratio
+        assert all(x[1] is not None for x in v), r
+        step = (v[1][0] - v[0][0]) / v[0][1]
+        normal = (v[3][0] - v[2][0]) / v[2][1]
+        assert step > 1.5 * normal, r  # the second message is missing
+    else:
+        assert v[1][1] is None, r
+        assert v[2][1] is not None, r
+
+
 def test_jls_v2(jls_v2):
     from pyjls import Reader
     with Reader(str(jls_v2)) as r:

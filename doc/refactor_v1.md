@@ -882,12 +882,12 @@ support (5.5), and hotplug.py, record.py and the driver statistics.py
 (5.6).  Each step is its own commit.
 
 12.2. Fixed, each with a test that failed first: 6.1, 6.2 (by the 6.3
-refactor), 6.4, 6.5, 6.7 for read_by_callback.py, 6.8, 6.9, 6.11 to 6.20,
+refactor), 6.4, 6.5, 6.7, 6.8, 6.9, 6.11 to 6.20,
 6.22 to 6.31 and 6.33 to 6.39.  6.10 is gone with the lock that caused it.
 
 12.3. Not fixed, since no test on this bench can show them (2.7): 6.3's
 file writes on the driver thread in monitor.py, 6.6 (needs GPI wiring),
-6.7 for read.py (needs dropped samples), 6.21 except fuse.py, which now
+6.21 except fuse.py, which now
 publishes with timeout=0, and 6.32 (needs two instruments sharing GPI0).
 tests/MANUAL.md covers the wiring and load cases.
 
@@ -963,4 +963,25 @@ JS110 000197, JS220 000043 (firmware 1.3.0, FPGA 1.3.3) and JS320 31NB
   8433), then the new stream starts at 0.  The driver resets
   `packet_index` to 0 on stream enable (`js110_usb.c`) but does not
   discard these frames, so about 1,800 samples from the previous stream
-  start the new one.
+  start the new one.  This is the JS110's behavior, and the log message
+  stays.
+
+12.9. GitHub issues, 2026 Oct 9.  Of the open issues:
+
+* #13 (`capture.py` below 20 kHz) and #18 (`capture_simple.py` startup
+  error) were already fixed: `capture.py` records JLS v2 through the
+  pyjoulescope_driver `record` entry point, and joulescope 1.2.3 fixed the
+  startup race.  Both ran on the JS110, JS220 and JS320, `capture.py` at
+  10 kHz.
+* #15 and #16 are fixed in `read.py`, with 6.7.  The test shim can now
+  drop or corrupt a streaming data message (`data_fault`), so these tests
+  failed first:
+  * #15: dropped samples are NaN.  The gap fill wrote at absolute sample
+    ids, which start near 0 only on the JS110, so on the JS220 and JS320
+    the gap was left unset.
+  * #16: an exception in the data callback, which runs on the driver
+    thread, now stops `read()` and raises there.  It was ignored, and an
+    error on every message waited forever.
+  * 6.7: the returned `utc_range` was 223 s early on the JS220 and 4827 s
+    early on the JS320.  It is now within 20 ms of the call on all three.
+    The command line does not print it, so an in-process check showed it.

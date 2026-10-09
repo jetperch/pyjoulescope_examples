@@ -38,6 +38,11 @@ When JOULESCOPE_EXAMPLES_OPEN_FAIL is set, such as "2", those calls to
 Driver.open, counting from 1, raise TimeoutError, as when an instrument
 disappears while it opens.
 
+When JOULESCOPE_EXAMPLES_DATA_FAULT is set, such as "drop@3" or
+"corrupt@3", each subscriber to a "!data" topic loses that message,
+counting from 1, as when USB drops a packet, or receives it with
+"data" set to None, as a malformed message.
+
 When JOULESCOPE_EXAMPLES_DOCUMENTS is set, it also stands in for the
 user's Documents folder, so that examples that write there, such as
 downsample_logging.py, never touch the real one.
@@ -51,6 +56,7 @@ _SPEC = os.environ.get('JOULESCOPE_EXAMPLES_VISIBLE')
 _HOTPLUG = os.environ.get('JOULESCOPE_EXAMPLES_HOTPLUG')
 _OPEN_FAIL = os.environ.get('JOULESCOPE_EXAMPLES_OPEN_FAIL')
 _DOCUMENTS = os.environ.get('JOULESCOPE_EXAMPLES_DOCUMENTS')
+_DATA_FAULT = os.environ.get('JOULESCOPE_EXAMPLES_DATA_FAULT')
 
 
 def _documents_install(path):
@@ -68,7 +74,7 @@ def _documents_install(path):
     shell.SHGetFolderPath = fn
 
 
-def _install(spec, hotplug=None, open_fail=None):
+def _install(spec, hotplug=None, open_fail=None, data_fault=None):
     import pyjoulescope_driver
     from pyjoulescope_driver import DevicePath, device_filter
 
@@ -82,6 +88,11 @@ def _install(spec, hotplug=None, open_fail=None):
             events.append((float(t), kind))
     present = [not events or events[0][1] != 'add']
     wrappers = []  # every _Filtered instance, for the simulated hotplug events
+    faults = {}  # message number: 'drop' or 'corrupt'
+    for item in (data_fault or '').split(','):
+        if item.strip():
+            kind, n = item.strip().split('@')
+            faults[int(n)] = kind
 
     def visible(device_path):
         return present[0] and bool(spec) and bool(device_filter.find([DevicePath(device_path)], spec))
@@ -106,6 +117,28 @@ def _install(spec, hotplug=None, open_fail=None):
         def __hash__(self):
             return hash(self.fn)
 
+    class _DataFault:
+        """A "!data" callback that loses or corrupts the selected messages."""
+
+        def __init__(self, fn):
+            self.fn = fn
+            self.count = 0
+
+        def __call__(self, topic, value):
+            self.count += 1
+            kind = faults.get(self.count)
+            if kind == 'drop':
+                return
+            if kind == 'corrupt':
+                value = dict(value, data=None)
+            self.fn(topic, value)
+
+        def __eq__(self, other):
+            return other is self or other is self.fn or other == self.fn
+
+        def __hash__(self):
+            return hash(self.fn)
+
     class Driver(pyjoulescope_driver.Driver):
 
         def query(self, topic, timeout=None):
@@ -118,6 +151,8 @@ def _install(spec, hotplug=None, open_fail=None):
             if topic in ['@/!add', '@/!remove']:
                 fn = _Filtered(topic, fn)
                 wrappers.append(fn)
+            elif faults and topic.endswith('!data'):
+                fn = _DataFault(fn)
             return super().subscribe(topic, flags, fn, timeout)
 
         def unsubscribe(self, topic, fn, timeout=None):
@@ -155,6 +190,6 @@ def _install(spec, hotplug=None, open_fail=None):
 
 
 if _SPEC is not None:
-    _install(_SPEC.strip(), _HOTPLUG, _OPEN_FAIL)
+    _install(_SPEC.strip(), _HOTPLUG, _OPEN_FAIL, _DATA_FAULT)
 if _DOCUMENTS:
     _documents_install(_DOCUMENTS)
