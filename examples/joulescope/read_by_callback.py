@@ -90,9 +90,12 @@ class StreamProcess:
 
 def run():
     _quit = False
+    stop_message = None
 
-    def on_stop(*args, **kwargs):
-        nonlocal _quit
+    def on_stop(event=0, message=''):
+        nonlocal _quit, stop_message
+        if event:  # such as the device was removed
+            stop_message = message
         _quit = True
 
     args = get_parser().parse_args()
@@ -100,7 +103,7 @@ def run():
     device.parameter_set('buffer_duration', 2)  # could be smaller
     stream_process = StreamProcess(args.duration, device.sampling_frequency)
 
-    signal.signal(signal.SIGINT, on_stop)
+    signal.signal(signal.SIGINT, lambda *args: on_stop())  # Ctrl-C is a normal stop
 
     # Perform the data capture
     with device:
@@ -109,6 +112,9 @@ def run():
         while not _quit:
             time.sleep(0.1)
         device.stop()  # for CTRL-C handling (safe for duplicate calls)
+    if stop_message is not None:
+        print(f'Capture stopped: {stop_message}')
+        return 1
     data = stream_process.data
     print_stats(data, device.sampling_frequency)
 
@@ -120,4 +126,4 @@ def run():
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)-8s %(name)s %(message)s', level=logging.INFO)
-    run()
+    sys.exit(run())

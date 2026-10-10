@@ -87,15 +87,25 @@ def run():
                 device.publish('s/stats/ctrl', 1)
                 device.subscribe('s/stats/value', 'pub', on_statistics)
 
+            removed = []
+
+            def on_remove(topic, value):  # an unplugged device sends no more data, so stop
+                if value in device_paths:
+                    removed.append(value)
+
+            stack.enter_context(d.subscribe('@/!remove', 'pub', on_remove))
             t_stop = None if args.duration is None else time.monotonic() + args.duration
             try:
-                while t_stop is None or time.monotonic() < t_stop:
+                while not removed and (t_stop is None or time.monotonic() < t_stop):
                     try:
                         display(*statistics.get(timeout=0.1))
                     except queue.Empty:
                         pass  # the timeout keeps Ctrl+C responsive
             except KeyboardInterrupt:
                 pass
+            if removed:
+                print(f'{removed[0]} removed: stop')
+                return 1
     return 0
 
 

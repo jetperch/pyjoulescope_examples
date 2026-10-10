@@ -228,11 +228,9 @@ class GpiRegionDetector:
             self._jsdrv.publish(f'{self.device_path}/s/{t}/ctrl', 1, timeout=0)
 
     def close(self):
-        signals = DATA_SIGNALS + [DETECT_SIGNALS[x] for x in self._detect.keys()]
-        last = len(signals) - 1
-        for idx, t in enumerate(signals):
+        for t in DATA_SIGNALS + [DETECT_SIGNALS[x] for x in self._detect.keys()]:
             self._jsdrv.unsubscribe(f'{self.device_path}/s/{t}/!data', self._on_data, timeout=0)
-            self._jsdrv.publish(f'{self.device_path}/s/{t}/ctrl', 0, timeout=None if last else 0)
+            self._jsdrv.publish(f'{self.device_path}/s/{t}/ctrl', 0, timeout=0)  # no error if unplugged
 
     def _on_data(self, topic, value):
         signal = topic.split('/')[-2]
@@ -334,10 +332,17 @@ def run():
             print('No JS220 or JS320 found')
             return 1
 
+        removed = []
+
+        def on_remove(topic, value):  # an unplugged device sends no more data, so stop
+            if value in [h.device_path for h in handlers]:
+                removed.append(value)
+
         verbose('Perform the detection')
         try:
-            while True:
-                time.sleep(0.1)
+            with jsdrv.subscribe('@/!remove', 'pub', on_remove):
+                while not removed:
+                    time.sleep(0.1)
         except KeyboardInterrupt:
             pass
         finally:
@@ -345,6 +350,9 @@ def run():
             for handler in handlers:
                 handler.close()
                 jsdrv.close(handler.device_path)
+        if removed:
+            print(f'{removed[0]} removed: stop')
+            return 1
     return 0
 
 

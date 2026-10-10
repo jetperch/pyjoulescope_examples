@@ -142,20 +142,30 @@ def run():
             print('No JS220 or JS320 found')
             return 1
 
+        removed = []
+
+        def on_remove(topic, value):  # an unplugged device sends no more data, so stop
+            if value in opened:
+                removed.append(value)
+
         verbose('Monitor each device')
         try:
-            while True:
-                time.sleep(0.1)
+            with jsdrv.subscribe('@/!remove', 'pub', on_remove):
+                while not removed:
+                    time.sleep(0.1)
         except KeyboardInterrupt:
             pass
         finally:
             verbose('Closing')
-            for device_path in opened:
-                jsdrv.publish(f'{device_path}/s/gpi/0/ctrl', 'off')
-                jsdrv.publish(f'{device_path}/s/i/ctrl', 'off')
-                jsdrv.publish(f'{device_path}/s/v/ctrl', 'off')
+            for device_path in opened:  # timeout=0: no error if unplugged
+                jsdrv.publish(f'{device_path}/s/gpi/0/ctrl', 'off', timeout=0)
+                jsdrv.publish(f'{device_path}/s/i/ctrl', 'off', timeout=0)
+                jsdrv.publish(f'{device_path}/s/v/ctrl', 'off', timeout=0)
                 jsdrv.unsubscribe(f'{device_path}/s/gpi/0/!data', on_data)
                 jsdrv.close(device_path)
+    if removed:
+        print(f'{removed[0]} removed: stop')
+        return 1
     return 0
 
 

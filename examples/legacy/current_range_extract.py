@@ -47,7 +47,8 @@ import numpy as np
 import sys
 
 
-MAX_SAMPLES = 1000000000 / 5  # limit to 1 GB of RAM
+CHUNK_SAMPLES = 100_000        # process in chunks, so any file size fits in memory
+PLOT_POINTS_MAX = 1_000_000    # plot longer captures as a min / max envelope
 
 
 def get_parser():
@@ -63,43 +64,65 @@ def get_parser():
     return p
 
 
-def load_current_range(filename):
-    r = DataReader().open(filename)
-    try:
-        print(r.summary_string())
-        r_start, r_stop = r.sample_id_range
-        if r_stop - r_start > MAX_SAMPLES:
-            print('file too big')
-            return 1
-        d = r.samples_get(fields=['current_range'])
-        return d['signals']['current_range']['value']
-    finally:
-        r.close()
+def _plot(envelope, samples_per_point):
+    f = plt.figure()
+    ax = f.add_subplot(1, 1, 1)
+    e = np.concatenate(envelope)
+    x = np.arange(len(e)) * samples_per_point
+    if samples_per_point == 1:
+        ax.plot(x, e[:, 0])
+    else:  # each point covers several samples, so show their range
+        ax.fill_between(x, e[:, 0], e[:, 1], step='post')
+        ax.set_xlabel(f'Sample ({samples_per_point} samples per point)')
+    plt.show()
+    plt.close(f)
 
 
 def run():
     parser = get_parser()
     args = parser.parse_args()
-    current_range = load_current_range(args.filename)
-    
-    # Save file (if requested) in format specified by extension
-    if args.out is None:
-        pass
-    elif args.out.endswith('.csv') or args.out.endswith('.txt'):
-        np.savetxt(args.out, current_range, fmt='%d', delimiter=',')
-    elif args.out.endswith('.npy'):
-        np.save(args.out, current_range)
-    else:
-        print('Unsupported save type: %s', args.out)
-        return 1
+    r = DataReader().open(args.filename)
+    try:
+        print(r.summary_string())
+        out_type = None if args.out is None else args.out.split('.')[-1].lower()
+        if out_type not in [None, 'csv', 'txt', 'npy']:
+            print('Unsupported save type: %s', args.out)
+            return 1
+        s_start, s_stop = r.sample_id_range
+        n = s_stop - s_start
+        samples_per_point = max(1, -(-n // PLOT_POINTS_MAX))  # ceil
+        chunk = max(1, CHUNK_SAMPLES // samples_per_point) * samples_per_point
+        envelope = []  # (min, max) for each plotted point
+        out = None
+        try:
+            for k0 in range(s_start, s_stop, chunk):
+                k1 = min(k0 + chunk, s_stop)
+                d = r.samples_get(k0, k1, units='samples', fields=['current_range'])
+                current_range = d['signals']['current_range']['value']
+                if out_type in ['csv', 'txt']:
+                    if out is None:
+                        out = open(args.out, 'wt')
+                    np.savetxt(out, current_range, fmt='%d', delimiter=',')
+                elif out_type == 'npy':
+                    if out is None:  # written in place, so it never needs the whole capture in memory
+                        out = np.lib.format.open_memmap(args.out, mode='w+',
+                                                        dtype=current_range.dtype, shape=(n,))
+                    out[k0 - s_start:k1 - s_start] = current_range
+                if args.plot:
+                    m = -(-len(current_range) // samples_per_point) * samples_per_point
+                    padded = np.pad(current_range, (0, m - len(current_range)), mode='edge')
+                    blocks = padded.reshape((-1, samples_per_point))
+                    envelope.append(np.stack([blocks.min(axis=1), blocks.max(axis=1)], axis=1))
+        finally:
+            if isinstance(out, np.memmap):
+                out.flush()
+            elif out is not None:
+                out.close()
+    finally:
+        r.close()
 
-    if args.plot:
-        f = plt.figure()
-        ax = f.add_subplot(1, 1, 1)
-        ax.plot(current_range)
-        plt.show()
-        plt.close(f)
-
+    if args.plot and envelope:
+        _plot(envelope, samples_per_point)
     return 0
 
 

@@ -239,19 +239,25 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
 
     for signal in signals:
         signal_configure(signal)
+    device_paths = {signal['device_path'] for signal in read_state.values()}
 
-    while True:
-        try:
-            item = queue.get(timeout=0.1)
-        except Empty:
-            continue
-        if isinstance(item, Exception):
-            raise item
-        duration_now = time_info()['duration']
-        if duration_now >= duration:
-            on_progress(1.0)
-            break
-        on_progress(duration_now / duration)
+    def on_remove(topic, value):  # an unplugged device never sends the remaining data
+        if value in device_paths:
+            queue.put(RuntimeError(f'{value} removed during the read'))
+
+    with jsdrv.subscribe('@/!remove', 'pub', on_remove):
+        while True:
+            try:
+                item = queue.get(timeout=0.1)
+            except Empty:
+                continue
+            if isinstance(item, Exception):
+                raise item
+            duration_now = time_info()['duration']
+            if duration_now >= duration:
+                on_progress(1.0)
+                break
+            on_progress(duration_now / duration)
 
     u0, u1 = time_info()['utc_range']
     z1 = u0 + int(duration * time64.SECOND)

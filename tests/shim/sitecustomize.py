@@ -34,6 +34,12 @@ subscribers, the same as the driver does for a USB hotplug.  It does not
 stop the device, so a stream continues, unlike a real unplug.  The
 visible specification must list full device paths.
 
+"unplug@5" acts like a real unplug instead: it reports "@/!remove", stops
+every callback for the device's topics, and makes each later publish to
+the device raise, except with timeout=0, as the driver does for a removed
+device.  The device
+does not return.
+
 When JOULESCOPE_EXAMPLES_OPEN_FAIL is set, such as "2", those calls to
 Driver.open, counting from 1, raise TimeoutError, as when an instrument
 disappears while it opens.
@@ -87,12 +93,32 @@ def _install(spec, hotplug=None, open_fail=None, data_fault=None):
             kind, t = item.strip().split('@')
             events.append((float(t), kind))
     present = [not events or events[0][1] != 'add']
+    unplugged = [False]
     wrappers = []  # every _Filtered instance, for the simulated hotplug events
     faults = {}  # message number: 'drop' or 'corrupt'
     for item in (data_fault or '').split(','):
         if item.strip():
             kind, n = item.strip().split('@')
             faults[int(n)] = kind
+
+    def device_topic(topic):
+        return any(topic.startswith(p.strip() + '/') for p in spec.split(',') if p.strip())
+
+    class _Unplug:
+        """A device topic callback that stops at the unplug."""
+
+        def __init__(self, fn):
+            self.fn = fn
+
+        def __call__(self, topic, value):
+            if not unplugged[0]:
+                self.fn(topic, value)
+
+        def __eq__(self, other):
+            return other is self or other is self.fn or other == self.fn
+
+        def __hash__(self):
+            return hash(self.fn)
 
     def visible(device_path):
         return present[0] and bool(spec) and bool(device_filter.find([DevicePath(device_path)], spec))
@@ -153,7 +179,15 @@ def _install(spec, hotplug=None, open_fail=None, data_fault=None):
                 wrappers.append(fn)
             elif faults and topic.endswith('!data'):
                 fn = _DataFault(fn)
+            if unplug and device_topic(topic):
+                fn = _Unplug(fn)
             return super().subscribe(topic, flags, fn, timeout)
+
+        def publish(self, topic, value, timeout=None):
+            if unplugged[0] and device_topic(topic) and timeout != 0:  # timeout=0 reports no error
+                raise RuntimeError(f'jsdrv_publish failed 16 NOT_FOUND | The requested resource '
+                                   f'was not found | {topic} (simulated unplug)')
+            return super().publish(topic, value, timeout)
 
         def unsubscribe(self, topic, fn, timeout=None):
             for w in wrappers:
@@ -178,12 +212,14 @@ def _install(spec, hotplug=None, open_fail=None, data_fault=None):
         for t, kind in events:
             time.sleep(max(0.0, t_start + t - time.monotonic()))
             present[0] = (kind == 'add')
-            topic = f'@/!{kind}'
+            unplugged[0] = (kind == 'unplug')
+            topic = '@/!add' if kind == 'add' else '@/!remove'
             for w in list(wrappers):
                 if w.topic == topic and w.active:
                     for device_path in device_paths:
                         w.fn(topic, device_path)
 
+    unplug = any(kind == 'unplug' for _, kind in events)
     pyjoulescope_driver.Driver = Driver
     if events:
         threading.Thread(target=hotplug_run, name='shim_hotplug', daemon=True).start()

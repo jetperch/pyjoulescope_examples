@@ -20,6 +20,73 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 1.0.1
+
+2026 Oct 10
+
+Changes:
+
+* Requires joulescope 1.7.1 and pyjoulescope_driver 2.5.1 or newer.
+* The streaming examples stop when the instrument is unplugged, say why,
+  and exit 1.  They kept running without data until Ctrl-C, or reported a
+  partial result as complete:
+  * detector.py, gpi_region.py, measure.py, monitor.py, record.py,
+    pyjoulescope_driver/statistics.py, timesync.py and trigger_out.py
+    print `<device> removed: stop`.
+  * joulescope/statistics.py, statistics_logger.py and
+    statistics_with_trigger_to_jls.py print `<MODEL>-<serial> removed:
+    stop`.  statistics_logger.py silently stopped its output for every
+    instrument.
+  * read.py prints `<device> removed during the read` (waited forever).
+  * accumulators.py and read_by_callback.py print `Capture stopped:
+    device removed`.  accumulators.py said "Capture duration completed.",
+    and read_by_callback.py returned the partial capture as complete.
+  * battery_discharge.py prints `Joulescope removed before reaching the
+    threshold` (exited 0, as if the discharge completed).
+
+  downsample_logging.py still keeps logging and resumes when the
+  instrument returns.
+* downsample_logging.py writes charge with 6 decimal places (was 4), so a
+  small current still accumulates, and a replug or `--resume` continues
+  from the more precise value.
+* current_range_extract.py reads, writes and plots a capture of any
+  length.  It refused captures over 200 million samples and then saved or
+  plotted the number 1.  Captures over 1 million samples plot as the range
+  of each point.
+
+Fixes:
+
+* downsample_logging.py: keep logging an instrument that was unplugged
+  before its first `--downsample` row (it never logged it again), and
+  resume after a crash that cut the last row short (OPEN FAILED).
+* detector.py, gpi_region.py, monitor.py and timesync.py: stop without a
+  traceback after an unplug.  monitor.py lost its summary files, and
+  timesync.py left the other instruments open.
+* jls_plot.py `--stats`: show the duration and charge (∫) of the whole JLS
+  v2 file.  They ended at the last plotted point, 0.1% short by default,
+  and half with `--sample-count 2`.
+* jls_export_points.py: document the `--offset` format and time zone (the
+  help showed hhssmm for hhmmss).
+* jls_recode.py: recode files of 1 second or less (was
+  ZeroDivisionError).
+* statistics_logger.py: close the `--out` file.
+* accumulators.py, read_by_callback.py and
+  statistics_with_trigger_to_jls.py: return the exit code to the shell
+  (was always 0).
+
+Tests and documentation:
+
+* The plot tests pass on Linux without a display, where matplotlib does
+  not warn on plt.show().
+* The test shim can simulate an unplug, and tests/test_unplug.py runs each
+  streaming example through it.  A USB hub that power cycles each
+  instrument showed the same results.
+* Each example runs with `PYTHONWARNINGS=error::ResourceWarning`, so an
+  unclosed file fails its test.
+* Added doc/windows_test_plan.md, which repeats the Linux stress tests on
+  Windows.
+
+
 ## 1.0.0
 
 2026 Oct 9

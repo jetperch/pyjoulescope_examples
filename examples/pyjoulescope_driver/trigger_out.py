@@ -187,10 +187,17 @@ def run():
             print('No JS220 or JS320 found')
             return 1
 
+        removed = []
+
+        def on_remove(topic, value):  # an unplugged device sends no more data, so stop
+            if value in [h.device_path for h in handlers]:
+                removed.append(value)
+
         verbose('Perform the detection')
         try:
-            while True:
-                time.sleep(0.1)
+            with jsdrv.subscribe('@/!remove', 'pub', on_remove):
+                while not removed:
+                    time.sleep(0.1)
         except KeyboardInterrupt:
             pass
         finally:
@@ -198,6 +205,9 @@ def run():
             for handler in handlers:
                 handler.close()
                 jsdrv.close(handler.device_path)
+        if removed:
+            print(f'{removed[0]} removed: stop')
+            return 1
     return 0
 
 

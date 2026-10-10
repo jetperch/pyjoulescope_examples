@@ -79,7 +79,7 @@ def run():
             offset_next = sample_count
         data = reader.samples_get(offset, offset_next, 'samples')
         writer.insert(data)
-        progress(block, block_count - 1)
+        progress(block + 1, block_count)
     reader.close()
     writer.close()
     return 0

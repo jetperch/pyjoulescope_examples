@@ -250,3 +250,51 @@ def test_resume(path, documents, device_path):
     assert len(rows) > k
     # charge and energy continue, with the precision written to the CSV file
     assert [float(x) for x in rows[k][4:6]] == pytest.approx([float(x) for x in rows[k - 1][4:6]])
+
+
+def test_hotplug_before_first_row(path, documents, device_path):
+    # With --downsample, the CSV file has only its header when the
+    # instrument is unplugged before the first row.  The replug continues it.
+    env, log_dir = documents
+    r = harness.run(path, '--time-format', 'relative', '--downsample', '4', env=env,
+                    visible=device_path, hotplug='add@1,remove@2.5,add@4', interrupt_after=10)
+    assert r.interrupted and not r.killed, r
+    assert r.returncode == 0, r
+    txt, csv = _logs(log_dir)[0]
+    assert 'OPEN FAILED' not in txt, txt
+    assert csv[0].splitlines()[0] == COLUMNS
+    rows = _rows(csv[0])
+    assert len(rows) >= 1, csv[0]
+    assert all(ROW.match(row) for row in rows), csv[0]
+
+
+def test_resume_after_truncated_row(path, documents, device_path):
+    # A crash or power loss can cut the last row short.  Resume continues
+    # from the last complete row, on a line of its own.
+    r = _run(path, documents, device_path=device_path)
+    assert r.returncode == 0, r
+    csv_path = sorted(documents[1].glob('*.csv'))[0]
+    text = csv_path.read_text()
+    csv_path.write_text(text[:-12])  # cut the last row inside its last fields
+    complete = _rows(text)[-2]
+    r = _run(path, documents, '--resume', device_path=device_path)
+    assert r.returncode == 0, r
+    txt, csv = _logs(documents[1])[0]
+    assert 'OPEN FAILED' not in txt, txt
+    rows = _rows(csv[0])
+    k = rows.index(complete)
+    resumed = [row for row in rows[k + 1:] if ROW.match(row)]
+    assert len(resumed) >= 1, csv[0]
+    assert len(rows) - len(resumed) == k + 2  # only the cut row does not match
+    assert [float(x) for x in resumed[0].split(',')[4:6]] == \
+        pytest.approx([float(x) for x in complete.split(',')[4:6]])
+
+
+def test_charge_format(path, documents, device_path):
+    # Charge has 6 decimal places, 1 µC, so a small current still accumulates (6.41).
+    r = _run(path, documents, device_path=device_path)
+    assert r.returncode == 0, r
+    rows = [row.split(',') for row in _rows(_logs(documents[1])[0][1][0])]
+    assert rows, r
+    for row in rows:
+        assert re.match(r'^-?\d+\.\d{6}$', row[4]), row

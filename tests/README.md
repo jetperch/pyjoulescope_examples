@@ -56,8 +56,9 @@ connected, so they also show the behavior with no instrument attached.
 pyjoulescope_driver reports.  Device tests use the same mechanism so that an
 example that uses every instrument only sees the one under test.
 The same shim can simulate a hotplug, where an instrument appears or
-disappears on a schedule, drop or corrupt a streaming data message, and
-can give an example its own Documents folder.
+disappears on a schedule, or an unplug, where its data stops and
+publishes to it fail, drop or corrupt a streaming data message, and can
+give an example its own Documents folder.
 
 
 ## Environment

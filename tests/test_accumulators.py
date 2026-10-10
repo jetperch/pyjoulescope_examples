@@ -101,3 +101,12 @@ def test_sensor_ctrl_c(path, device_path):
     assert r.returncode == 0, r
     assert r.lines[-2] == 'User exit requested.'
     assert SUMMARY.match(r.lines[-1]), r
+
+
+@pytest.mark.parametrize('source', ['stream_buffer', 'sensor'])
+def test_unplug(path, device_path, source):
+    r = harness.run(path, '--source', source, visible=device_path, hotplug='unplug@3', timeout=15)
+    assert not r.interrupted, r
+    assert 'Capture duration completed.' not in r.stdout, r
+    assert 'Capture stopped: device removed' in r.stdout, r
+    assert r.returncode == 1, r

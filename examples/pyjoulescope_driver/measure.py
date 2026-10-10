@@ -145,14 +145,25 @@ def run(args=None):
                 device.subscribe('s/stats/value', 'pub', measure.on_statistics)
 
             measure.start()
+            removed = []
 
-            # replace this sleep and try/except with whatever your code needs to do
+            def on_remove(topic, value):  # an unplugged device sends no more data, so stop
+                if value in [device_path]:
+                    removed.append(value)
+
+            # replace this loop and try/except with whatever your code needs to do
+            t_stop = time.monotonic() + args.duration
             try:
-                time.sleep(args.duration)
+                with jsdrv.subscribe('@/!remove', 'pub', on_remove):
+                    while not removed and time.monotonic() < t_stop:
+                        time.sleep(0.05)
             except KeyboardInterrupt:
                 pass  # or use Ctrl-C
 
             statistics = measure.stop()
+            if removed:
+                print(f'{removed[0]} removed: stop')
+                return 1
         # display statistics in a friendly format
         print(json.dumps(statistics, indent=2))
     return 0

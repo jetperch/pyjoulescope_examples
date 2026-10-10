@@ -18,6 +18,8 @@ import jls_files
 import pytest
 
 
+PROBE_TEXT = 'mpl_show_probe text: '  # see shim/mpl_show_probe.py
+
 pytestmark = pytest.mark.parametrize('path', harness.paths('jls_plot'))
 PNG = b'\x89PNG\r\n\x1a\n'
 
@@ -108,3 +110,13 @@ def test_short_file(path, tmp_path):
     r = harness.run(path, jls, '--out', 'out.png', cwd=tmp_path)
     assert r.returncode == 0, r
     assert _png(tmp_path / 'out.png')
+
+
+@pytest.mark.parametrize('count', [2, 1000])
+def test_stats_v2(path, jls_v2, count):
+    # The duration and charge cover the whole file, whatever the plot resolution (6.46).
+    r = harness.run(path, jls_v2, '--stats', '--show', '--sample-count', count)
+    assert r.returncode == 0, r
+    text = [x[len(PROBE_TEXT):] for x in r.stderr.splitlines() if x.startswith(PROBE_TEXT)]
+    assert 't = 2.0 s' in text, r
+    assert '∫=+4.00000 mC' in text, r

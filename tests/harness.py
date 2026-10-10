@@ -43,7 +43,7 @@ INTERRUPT_GRACE = 10.0  # seconds from Ctrl-C to kill
 SAMPLE_RATE = {'js110': 2_000_000, 'js220': 1_000_000, 'js320': 1_000_000}  # native, Hz
 STATS_RATE = '6.30 inherits the statistics rate that another program left on a JS220'
 TRACEBACK = 'Traceback (most recent call last)'
-PLOT_SHOWN = 'FigureCanvasAgg is non-interactive, and thus cannot be shown'
+PLOT_SHOWN = 'mpl_show_probe: plt.show() called'  # see shim/mpl_show_probe.py
 
 
 ENV_WRAPPERS = 'JOULESCOPE_EXAMPLES_WRAPPERS'
@@ -144,7 +144,8 @@ def environ(visible=None, env=None, hotplug=None, open_fail=None, data_fault=Non
     e['PYTHONIOENCODING'] = 'utf-8'
     e['PYTHONDONTWRITEBYTECODE'] = '1'
     e['PYTHONFAULTHANDLER'] = '1'
-    e['MPLBACKEND'] = 'Agg'  # plt.show() warns instead of opening a window
+    e.setdefault('PYTHONWARNINGS', 'error::ResourceWarning')  # an unclosed file prints a traceback
+    e['MPLBACKEND'] = 'module://mpl_show_probe'  # plt.show() prints PLOT_SHOWN
     if env:
         e.update(env)
     if visible is not None:
@@ -155,7 +156,9 @@ def environ(visible=None, env=None, hotplug=None, open_fail=None, data_fault=Non
             e[ENV_OPEN_FAIL] = open_fail
         if data_fault:
             e[ENV_DATA_FAULT] = data_fault
-        e['PYTHONPATH'] = os.pathsep.join([SHIM_PATH] + [p for p in [e.get('PYTHONPATH')] if p])
+    # Always on the path for mpl_show_probe.  sitecustomize does nothing
+    # unless one of its variables is set.
+    e['PYTHONPATH'] = os.pathsep.join([SHIM_PATH] + [p for p in [e.get('PYTHONPATH')] if p])
     return e
 
 
@@ -266,6 +269,8 @@ def run(path, *args, cwd=None, timeout=60.0, interrupt_after=None, interrupt_on=
     p.wait()
     for t in threads:
         t.join(timeout=5)
+    p.stdout.close()
+    p.stderr.close()
     return Result(path=path, args=args, returncode=p.returncode,
                   stdout=_text(stdout), stderr=_text(stderr),
                   elapsed=time.monotonic() - t_start,

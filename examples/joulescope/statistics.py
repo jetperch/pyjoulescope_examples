@@ -73,6 +73,10 @@ def run():
             cbk = statistics_callback_factory(device, statistics_queue)
             device.statistics_callback_register(cbk)
         while not _quit:
+            removed = [str(device) for device in devices if not device.is_open]
+            if removed:  # unplugged, so no more statistics
+                print(f'{removed[0]} removed: stop')
+                return 1
             try:
                 statistics_callback(*statistics_queue.get(timeout=0.1))
             except queue.Empty:

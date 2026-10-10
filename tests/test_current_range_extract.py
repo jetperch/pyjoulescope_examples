@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import harness
+import jls_files
 import numpy as np
 import pytest
 
@@ -75,3 +76,14 @@ def test_plot(path, jls_v1, tmp_path):
 def test_v2_unsupported(path, jls_v2, tmp_path):
     r = harness.run(path, jls_v2, cwd=tmp_path)
     assert r.returncode != 0, r
+
+
+def test_large(path, tmp_path):
+    # Over PLOT_POINTS_MAX and many chunks: read, written and plotted in pieces (6.47).
+    jls_files.write_v1(tmp_path / 'big.jls', duration=15)  # 1.5 million samples
+    r = harness.run(path, 'big.jls', '-o', 'cr.npy', '--plot', cwd=tmp_path)
+    assert r.returncode == 0, r
+    assert r.plot_shown
+    x = np.load(tmp_path / 'cr.npy')
+    assert len(x) == 1_500_000
+    assert np.all(x == 4)

@@ -58,6 +58,9 @@ def run():
             if v <= args.voltage:
                 device.parameter_set('i_range', 'off')  # disconnect the battery
                 break
+        else:  # statistics_iter() ends when the device is removed
+            print('Joulescope removed before reaching the threshold')
+            return 1
     except KeyboardInterrupt:
         print('Interrupted by user')
     finally:

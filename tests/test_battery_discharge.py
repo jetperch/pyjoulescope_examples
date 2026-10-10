@@ -82,3 +82,11 @@ def test_statistics_rate(path, statistics_100hz):
 def test_2hz(path, device_path):
     r = harness.run(path, -100, visible=device_path, interrupt_on=lambda out: out.count('\n') >= 3)
     assert [line.split(':')[0] for line in r.lines[:3]] == ['0.0', '0.5', '1.0']
+
+
+def test_unplug(path, device_path):
+    # The statistics stop, so the discharge cannot complete: say so.
+    r = harness.run(path, -100, visible=device_path, hotplug='unplug@3', timeout=15)
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert r.lines[-1] == 'Joulescope removed before reaching the threshold', r

@@ -169,3 +169,13 @@ def test_several_devices(path, several_devices):
     assert r.returncode == 0, r
     data = _parse(r.lines)
     assert sorted(data) == sorted((p, s) for p in paths for s in ['current', 'voltage'])
+
+
+def test_unplug_stops_read(path, device_path):
+    # An unplugged instrument never sends the rest of the data, so the read stops.
+    r = harness.run(path, '-d', 30, '--no-progress', visible=device_path, hotplug='unplug@3',
+                    timeout=15)
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert f'{device_path} removed during the read' in r.stdout, r
+    assert not r.has_traceback, r

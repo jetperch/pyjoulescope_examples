@@ -95,6 +95,7 @@ import threading
 MAX_SAMPLES = 1000000000 / 5  # limit to 1 GB of RAM
 CSV_SEEK = 4096
 LAST_INITIALIZE = (None, 0.0, 0.0, 0.0, 0.0, 0.0)
+CSV_COLUMNS = ['time', 'current', 'voltage', 'power', 'charge', 'energy', 'current_min', 'current_max']
 USER_NOTIFY_INTERVAL_S = 10.0
 FLOAT_MAX = np.finfo(float).max
 
@@ -382,19 +383,28 @@ class LoggerDevice:
         self.name = f'{model}_{sn}'
         fname = self._parent.base_filename + f'_{self.name}.csv'
         parent.on_event('DEVICE', 'OPEN ' + self.device)
-        if os.path.isfile(fname):
-            sz = os.path.getsize(fname)
-            self._last = LAST_INITIALIZE
+        sz = os.path.getsize(fname) if os.path.isfile(fname) else 0
+        if sz:
+            self._last = LAST_INITIALIZE  # the header is already written
             with open(fname, 'rt') as f:
                 f.seek(max(0, sz - CSV_SEEK))
-                for line in f.readlines()[-1::-1]:
-                    if line.startswith('#'):
-                        continue
-                    last_line = line.strip().split(',')
-                    self._last = tuple([last_line[0]] + [float(x) for x in last_line[1:]])
-                    self._offset = [self._last[4], self._last[5]]  # charge, energy
-                    break
+                lines = f.read().split('\n')
+            # Continue from the last complete row, skipping the header and
+            # comments.  The last item follows the final newline, so it is
+            # empty, or a row that a crash cut short.
+            for line in lines[-2::-1]:
+                fields = line.strip().split(',')
+                if line.startswith('#') or len(fields) != len(CSV_COLUMNS):
+                    continue
+                try:
+                    self._last = tuple([fields[0]] + [float(x) for x in fields[1:]])
+                except ValueError:
+                    continue
+                self._offset = [self._last[4], self._last[5]]  # charge, energy
+                break
         self._f_csv = open(fname, 'at+')
+        if sz and lines[-1]:
+            self._f_csv.write('\n')  # end the cut row, so new rows start on their own line
         d = parent.driver
         try:
             d.open(device, mode='restore')
@@ -460,8 +470,6 @@ class LoggerDevice:
         if self._last is None:
             self._last = LAST_INITIALIZE
 
-            columns = ['time', 'current', 'voltage', 'power', 'charge',
-                       'energy', 'current_min', 'current_max']
             units = ['s',
                      value['signals']['current']['avg']['units'],
                      value['signals']['voltage']['avg']['units'],
@@ -471,7 +479,7 @@ class LoggerDevice:
                      value['signals']['current']['avg']['units'],
                      value['signals']['current']['avg']['units'],
                      ]
-            columns_csv = ','.join(columns)
+            columns_csv = ','.join(CSV_COLUMNS)
             units_csv = ','.join(units)
             parent.on_event('PARAM', f'columns={columns_csv}')
             parent.on_event('PARAM', f'units={units_csv}')
@@ -511,7 +519,7 @@ class LoggerDevice:
             self._downsample_counter = 0
             self._last = (t, *s, c, e, *self._downsample_state['min'], *self._downsample_state['max'])
             self._downsample_state_reset()
-            self._f_csv.write('%s,%g,%g,%g,%.4f,%g,%g,%g\n' % self._last)
+            self._f_csv.write('%s,%g,%g,%g,%.6f,%g,%g,%g\n' % self._last)
             self._f_csv.flush()
 
 

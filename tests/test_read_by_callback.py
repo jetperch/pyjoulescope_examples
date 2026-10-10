@@ -82,3 +82,11 @@ def test_plot(path, device_path):
     r = harness.run(path, '-d', 0.1, '--plot', visible=device_path)
     assert r.returncode == 0, r
     assert r.plot_shown
+
+
+def test_unplug(path, device_path):
+    # The capture stops early, so the example says so rather than report the partial data.
+    r = harness.run(path, '--duration', 30, visible=device_path, hotplug='unplug@3', timeout=15)
+    assert not r.interrupted, r
+    assert 'Capture stopped: device removed' in r.stdout, r
+    assert r.returncode == 1, r

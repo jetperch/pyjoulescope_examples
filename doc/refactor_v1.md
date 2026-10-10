@@ -368,8 +368,112 @@ twice): the example stops after the first reading below the threshold, before
 a second can arrive.  Per 2.7 it is not fixed on its own; the refactor
 removes the lock.
 
+Found by stress testing on Linux with a USB hub that power cycles each
+instrument, 2026 Oct 9:
+
+6.40. `downsample_logging.py` stops logging an instrument for good when it
+is unplugged before the first row of a `--downsample` window: the replug
+parses the CSV header as the last row, logs `OPEN FAILED ... could not
+convert string to float: 'current'`, and fails the same way on every later
+replug.  A `--resume` after a crash that cut the last row short fails the
+same way, and an empty CSV file never gains its header.
+
+6.41. `downsample_logging.py` writes charge with `%.4f`, so a small current
+logs `0.0000`, and a replug or `--resume` continues from the rounded
+value.  The docstring shows charge with 6 significant digits.  Changing the
+format needs a decision (7.7).
+Decision 2026 Oct 10: 6 decimal places.  Fixed in 1.0.1.
+
+6.42. After an unplug, `read.py` waits forever for data that never comes,
+and Ctrl-C then raises KeyboardInterrupt with a traceback.
+
+6.43. After an unplug, Ctrl-C ends `monitor.py`, `detector.py`,
+`gpi_region.py` and `timesync.py` with a traceback: their cleanup
+publishes to the removed instrument, which raises NOT_FOUND, or CLOSED
+once it returns.  `monitor.py` then skips closing its summary JLS and
+XLSX files, and `timesync.py` leaves its other instruments open.
+`gpi_region.py` meant to block only on its last publish, but
+`timeout=None if last else 0` always blocks.
+
+6.44. After an unplug, most streaming examples keep running silently
+until Ctrl-C, without a message: `statistics.py`, `record.py`,
+`measure.py`, `monitor.py`, `detector.py`, `gpi_region.py`,
+`timesync.py`, `trigger_out.py` and
+`statistics_with_trigger_to_jls.py`, and the pyjoulescope_driver entry
+points.  Whether they should exit needs a decision (7.4).  Examples whose
+results an unplug makes wrong now stop with a message instead: `read.py`
+(6.42), `read_by_callback.py` and `accumulators.py` (6.49),
+`statistics_logger.py` (6.50) and `battery_discharge.py` (6.51).
+Decision 2026 Oct 10: they exit.  Fixed in 1.0.1: each prints why and
+exits 1, and pyjoulescope_driver 2.5.1 does the same for its record,
+statistics and measure entry points.
+
+6.45. `jls_recode.py` raises ZeroDivisionError in its progress bar on a
+file of 1 second or less, and leaves the output file unclosed.
+
+6.49. After an unplug, `read_by_callback.py` returns the partial capture as
+if complete and exits 0, and `accumulators.py` prints "Capture duration
+completed." with or without `--duration`.  Both `__main__` blocks also
+dropped the return code.
+
+6.50. After an unplug, `statistics_logger.py` stops printing and recording
+for every instrument, silently, and keeps running: each row waits for all
+of them.  Found by a static review and confirmed with the USB hub.
+
+6.51. After an unplug, `battery_discharge.py` exits 0 without a message
+before reaching its threshold, as if the discharge completed.
+
+Found by a static review, which no black-box test can show yet (2.7):
+
+6.46. `jls_plot.py` computes the JLS v2 charge (∫) and the displayed
+duration from the time of the last plotted point, `(n - 1) * incr / fs`,
+rather than the file duration, so both read about 0.1% low with the
+default 1000 points, and 0 for a single point.  The values only appear
+in the figure.
+Fixed in 1.0.1.  The test probe backend now prints figure text, which
+showed `t = 1.0 s` and half the charge with `--sample-count 2`.
+
+6.47. `current_range_extract.py` returns 1 as the data for a file over
+`MAX_SAMPLES` (200 million samples), which `--out` then saves and
+`--plot` plots.
+Fixed in 1.0.1: it reads, writes and plots any length in chunks.
+
+6.48. `jls_export_points.py --offset` treats a time without `Z` or an
+offset as local time, and its help shows `YYYYMMDDThhssmm` for
+`YYYYMMDDThhmmss`.
+Fixed in 1.0.1: the help documents the format and the time zone.
+
+6.52. `battery_discharge.py` exits with a TimeoutError traceback if the
+statistics stop for over 2 seconds without an unplug, such as a USB stall,
+and leaves the battery connected to a load that keeps discharging it.
+Not observed, 2026 Oct 10: no TimeoutError, and at most 0.507 s between
+values (the timeout is 2 s), on all three instruments over 5 minutes
+each of a baseline, all CPUs saturated (load 34 on 16 cores) and
+full-rate streaming on the same bus, and 12 USB data glitches of 50 to
+500 ms.  Every glitch was a removal, which 6.51 handles.  It needs an
+instrument that stays enumerated with its statistics stopped, such as a
+firmware hang without a watchdog reset.  On Linux, Python measures the
+timeout with CLOCK_MONOTONIC, which does not advance in host sleep.
+
 Upstream defects that the examples expose.  Fix them upstream, not in the
 examples; the example tests mark them `xfail` with these numbers.
+
+U.10. joulescope 1.7.0 `Device.read()` raises AttributeError on
+`stream_buffer.sample_id_range` when the device is removed during the
+read, as in `read_by_method.py`.
+Status 2026 Oct 9: fixed in pyjoulescope e972bbd on `fix/read_removed`.
+It raises RuntimeError("read stopped: device removed").
+
+U.11. pyjoulescope_driver 2.5.0 `Record.close()` logs a traceback for each
+signal that it cannot stop after an unplug, as in `record.py`.
+Status 2026 Oct 9: fixed in joulescope_driver 767b221 on
+`fix/linux_stress`, which logs a warning instead.
+
+U.12. pyjoulescope_driver 2.5.0 on Linux: an open of an instrument that
+another process holds fails with `-6 UNKNOWN` on the JS110 and JS220,
+and times out on the JS320.  Each failure leaked a USB file descriptor.
+Status 2026 Oct 9: fixed in joulescope_driver f29ee37 on
+`fix/linux_stress`, which reports IN_USE at once.
 
 U.1. joulescope 1.6.1 reports JS320 statistics `time.range` 8 times too
 large: `Device._on_stats` assumes a 2 MHz sample counter.  `statistics.py`
@@ -985,3 +1089,23 @@ JS110 000197, JS220 000043 (firmware 1.3.0, FPGA 1.3.3) and JS320 31NB
   * 6.7: the returned `utc_range` was 223 s early on the JS220 and 4827 s
     early on the JS320.  It is now within 20 ms of the call on all three.
     The command line does not print it, so an in-process check showed it.
+
+12.10. Linux stress testing, 2026 Oct 9 and 10, on Linux with a JS110
+(001612), JS220 (002122) and JS320 (8W2A) behind a USB hub that power
+cycles each one:
+
+* Found and fixed 6.40 to 6.52 in the examples, except 6.52, which did
+  not occur, and U.10 to U.12 upstream.  joulescope_driver 2.5.1 also
+  fixes a memory leak of 175 to 345 KB for each unplug of an open
+  instrument (libusb backend), and pyjls `fix/closed_handle` a
+  segmentation fault on a second close().
+* An 8 hour downsample_logging.py soak with 92 real unplugs, then 2
+  hours with power and data-line unplugs: every replug recovered with
+  charge and energy continuous.  The USB hub silently ignores about 1 in
+  50 commands, so the test tools read back each command.
+* A JS110 does not return after its USB data lines drop while it stays
+  powered, with no program using it.  Only a power cycle recovers it.
+* 300 of 300 reopens after hard kills of a streaming program, and a 30
+  minute full-rate capture on all three at once with no lost samples.
+* doc/windows_test_plan.md repeats the platform-dependent parts on
+  Windows, where the busy-open error code still needs the same fix.

@@ -73,14 +73,24 @@ def run():
                 return 1
             recorder.open(args.filename)  # enables the signals and starts recording
             print('Recording.  Press CTRL-C to stop.')
+            removed = []
+
+            def on_remove(topic, value):  # an unplugged device sends no more data, so stop
+                if value in [device_path]:
+                    removed.append(value)
+
             t_stop = None if args.duration is None else time.monotonic() + args.duration
             try:
-                while t_stop is None or time.monotonic() < t_stop:
-                    time.sleep(0.05)
+                with d.subscribe('@/!remove', 'pub', on_remove):
+                    while not removed and (t_stop is None or time.monotonic() < t_stop):
+                        time.sleep(0.05)
             except KeyboardInterrupt:
                 pass
             finally:
                 recorder.close()  # disables the signals and finishes the file
+            if removed:
+                print(f'{removed[0]} removed: stop')
+                return 1
     return 0
 
 

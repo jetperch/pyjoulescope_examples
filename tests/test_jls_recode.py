@@ -55,3 +55,17 @@ def test_v2_unsupported(path, jls_v2, tmp_path):
     r = harness.run(path, jls_v2, 'out.jls', cwd=tmp_path)
     assert r.returncode != 0, r
     assert 'invalid file' in r.stderr
+
+
+def test_recode_short(path, tmp_path):
+    # A file of one block or less, here 0.5 seconds.
+    from joulescope.data_recorder import DataReader
+    jls_files.write_v1(tmp_path / 'short.jls', duration=0.5)
+    r = harness.run(path, 'short.jls', 'out.jls', cwd=tmp_path)
+    assert r.returncode == 0, r
+    assert '100.0%' in r.lines[-1]
+    reader = DataReader().open(str(tmp_path / 'out.jls'))
+    try:
+        assert reader.sample_id_range == [0, 50000]
+    finally:
+        reader.close()

@@ -90,3 +90,13 @@ def test_several_devices(path, several_devices):
     for row in r.lines[1:]:
         assert ROW.match(row), r
         assert len(row.split(',')) == 1 + 3 * count
+
+
+def test_unplug(path, device_path, tmp_path):
+    # Each row needs every instrument, so the logger stops rather than stall silently.
+    r = harness.run(path, '--out', 'out.csv', cwd=tmp_path, visible=device_path,
+                    hotplug='unplug@4', timeout=15)
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert r.lines[-1] == f'{device_path.model.upper()}-{device_path.serial_number} removed: stop', r
+    assert not r.has_traceback, r

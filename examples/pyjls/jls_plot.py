@@ -100,15 +100,16 @@ def run():
         y = data[:, 0]
         x = np.arange(0, len(y), dtype=np.float64) * (incr / s.sample_rate)
         z = r.fsr_statistics(signals[0].signal_id, 0, s.length, 1)[0, :]
+        duration = s.length / s.sample_rate  # the file, not the last plotted point
         stats = {
             'µ': {'value': z[SummaryFSR.MEAN], 'units': s.units},
             'σ': {'value': z[SummaryFSR.STD], 'units': s.units},
             'min': {'value': z[SummaryFSR.MIN], 'units': s.units},
             'max': {'value': z[SummaryFSR.MAX], 'units': s.units},
             'p2p': {'value': z[SummaryFSR.MAX] - z[SummaryFSR.MIN], 'units': s.units},
-            '∫': {'value': z[SummaryFSR.MEAN] * x[-1], 'units': 'C'},
+            '∫': {'value': z[SummaryFSR.MEAN] * duration, 'units': 'C'},
         }
-        s_str = [f't = {x[-1]:.3} s'] + si_format(stats)
+        s_str = [f't = {duration:.3} s'] + si_format(stats)
 
     elif prefix == _V1_PREFIX:
         print(f'Reading JLS v1: {args.input}')

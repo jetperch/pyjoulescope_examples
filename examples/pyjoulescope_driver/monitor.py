@@ -209,10 +209,13 @@ class Monitor:
         self._driver.subscribe(f'{self._device_prefix}/s/stats/value', ['pub'], self._on_statistic_fn)
 
     def close(self):
-        if self._device_prefix.model == 'js110':
-            self.device_publish('s/i/ctrl', 0)
-            self.device_publish('s/v/ctrl', 0)
-        self.device_publish('s/stats/ctrl', 0)
+        try:
+            if self._device_prefix.model == 'js110':
+                self.device_publish('s/i/ctrl', 0)
+                self.device_publish('s/v/ctrl', 0)
+            self.device_publish('s/stats/ctrl', 0)
+        except RuntimeError as ex:  # such as unplugged, which already stopped it
+            print(f'Could not stop {self._device_prefix}: {ex}')
         self._driver.unsubscribe(f'{self._device_prefix}/s/stats/value', self._on_statistic_fn)
         self._driver.close(self._device_prefix)
         if self._summary_jls is not None:
@@ -240,12 +243,22 @@ def run():
             return 1
         monitor = Monitor(driver, device_prefix)
         monitor.open()
+        removed = []
+
+        def on_remove(topic, value):  # an unplugged device sends no more data, so stop
+            if value in [device_prefix]:
+                removed.append(value)
+
         try:
-            while True:
-                time.sleep(0.010)
+            with driver.subscribe('@/!remove', 'pub', on_remove):
+                while not removed:
+                    time.sleep(0.010)
         except KeyboardInterrupt:
             pass
         monitor.close()
+        if removed:
+            print(f'{removed[0]} removed: stop')
+            return 1
     return 0
 
 

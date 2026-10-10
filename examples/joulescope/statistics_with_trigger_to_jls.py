@@ -23,6 +23,7 @@ from joulescope.units import duration_to_seconds
 import argparse
 import datetime
 import signal
+import sys
 import time
 
 
@@ -142,6 +143,9 @@ def run():
         device.parameter_set('v_range', '15V')
         device.start()
         while not _quit:
+            if not device.is_open:  # unplugged, so no more data
+                print(f'{device} removed: stop')
+                return 1
             time.sleep(0.1)
         device.stop()
 
@@ -149,7 +153,8 @@ def run():
         device.close()
         if s is not None:
             s.close()
+    return 0
 
 
 if __name__ == '__main__':
-    run()
+    sys.exit(run())

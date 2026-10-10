@@ -41,7 +41,10 @@ def parser_config(p):
                    Signals may be specified in any of the following formats:
                    signal_name, signal_id, source_id.signal_name, source_name.signal_name""")
     p.add_argument('--offset',
-                   help='The starting offset in ISO 8601 format such as YYYYMMDDThhssmm.ffffffZ')
+                   help='The start time, in ISO 8601 format, such as 20240101T000001.5Z or '
+                        + '2024-01-01T00:00:01.5+00:00.  Defaults to the start of the file.  '
+                        + 'The time is UTC when it ends with Z, or the given offset, '
+                        + 'and local time when it has neither.')
     p.add_argument('--duration',
                    type=time64.duration_to_seconds,
                    help='The capture duration, which defaults to units of float seconds. '

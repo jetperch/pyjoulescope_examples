@@ -97,14 +97,24 @@ class DetectorRunner:
                 device.subscribe('s/i/!data', 'pub', data_fn)
                 device.publish('s/i/ctrl', 1)
 
+                removed = []
+
+                def on_remove(topic, value):  # an unplugged device sends no more data, so stop
+                    if value in [device_path]:
+                        removed.append(value)
+
                 # process incoming sample data
                 t_start = time.time()
                 try:
-                    while args.duration is None or time.time() - t_start < args.duration:
-                        time.sleep(0.05)  # self._on_data may be called
+                    with d.subscribe('@/!remove', 'pub', on_remove):
+                        while not removed and (args.duration is None or time.time() - t_start < args.duration):
+                            time.sleep(0.05)  # self._on_data may be called
                 except KeyboardInterrupt:
                     pass  # normal CTRL-C exit
-                device.publish('s/i/ctrl', 0)
+                device.publish('s/i/ctrl', 0, timeout=0)  # no error if unplugged
+                if removed:
+                    print(f'{removed[0]} removed: stop')
+                    return 1
         return 0
 
 

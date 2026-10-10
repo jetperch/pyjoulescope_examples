@@ -28,6 +28,7 @@ import argparse
 import logging
 import numpy as np
 import signal
+import sys
 import time
 
 
@@ -58,6 +59,7 @@ class Accumulators:
 
     def __init__(self):
         self._quit = False
+        self._error = False
         self._statistics = None
         self._update_previous = 0.0
         self._update_interval = 60.0
@@ -67,9 +69,13 @@ class Accumulators:
             print('\nUser exit requested.')
         self._quit = True
         
-    def _on_stop(self, *args, **kwargs):
+    def _on_stop(self, event=0, message=''):
         if not self._quit:
-            print('\nCapture duration completed.')
+            if event:  # such as the device was removed
+                print(f'\nCapture stopped: {message}')
+                self._error = True
+            else:
+                print('\nCapture duration completed.')
         self._quit = True
 
     def _on_statistics(self, statistics):
@@ -125,7 +131,10 @@ class Accumulators:
                 if self._quit:
                     break
                 self._on_statistics(statistics)
-            self._on_stop()
+            if device.is_open:
+                self._on_stop()
+            else:  # statistics_iter() also ends when the device is removed
+                self._on_stop(1, 'device removed')
 
     def run(self):
         args = get_parser().parse_args()
@@ -136,9 +145,9 @@ class Accumulators:
             self._run_sensor(args)
 
         print(self._statistics_to_user_str())
-        return 0
+        return 1 if self._error else 0
 
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)-8s %(name)s %(message)s', level=logging.WARNING)
-    Accumulators().run()
+    sys.exit(Accumulators().run())

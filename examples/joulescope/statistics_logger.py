@@ -127,6 +127,10 @@ def run():
         t_start = time.time()
 
         while not _quit:
+            removed = [str(d).split(':')[-1] for d in devices if not d.is_open]
+            if removed:  # each row needs every Joulescope, so stop rather than stall
+                print(f'{",".join(removed)} removed: stop')
+                return 1
             # fetch data from the queue
             while not _quit:
                 try:
@@ -161,6 +165,8 @@ def run():
     finally:
         for device in devices:
             device.close()
+        if f_out:
+            f_out.close()
 
 
 if __name__ == '__main__':
