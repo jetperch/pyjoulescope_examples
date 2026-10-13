@@ -22,11 +22,15 @@ This file contains the list of changes made to pyjoulescope_examples.
 
 ## 1.0.1
 
-2026 Oct 10
+2026 Oct 13
 
 Changes:
 
 * Requires joulescope 1.7.1 and pyjoulescope_driver 2.5.1 or newer.
+* jls_export_points.py clamps each signal to its own length when it
+  converts the common time window to sample ids, so time map rounding
+  cannot read past a signal.  Added a test file from two Joulescopes
+  recorded together, whose signals have different time extents.
 * The streaming examples stop when the instrument is unplugged, say why,
   and exit 1.  They kept running without data until Ctrl-C, or reported a
   partial result as complete:

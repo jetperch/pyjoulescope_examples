@@ -156,8 +156,9 @@ def on_cmd(args):
             continue
         signal = column['signal']
         signal_id = signal.signal_id
-        s_start = r.timestamp_to_sample_id(signal_id, t64_start)
-        s_end = r.timestamp_to_sample_id(signal_id, t64_start + t64_duration)
+        # clamp: time map rounding must not read past the signal
+        s_start = max(0, r.timestamp_to_sample_id(signal_id, t64_start))
+        s_end = min(signal.length - 1, r.timestamp_to_sample_id(signal_id, t64_start + t64_duration))
         if (s_end - s_start) < args.count:
             print(f'{column["name"]}: less than one sample per point')
         sample_ids = np.floor(np.linspace(s_start, s_end, args.count + 1))  # need end since using as range

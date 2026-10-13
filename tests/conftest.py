@@ -183,6 +183,12 @@ def jls_v2(tmp_path_factory):
 
 
 @pytest.fixture(scope='session')
+def jls_v2_multi(tmp_path_factory):
+    """A JLS v2 file from two Joulescopes with different time extents.  See jls_files."""
+    return jls_files.write_v2_multi(tmp_path_factory.mktemp('jls') / 'v2_multi.jls')
+
+
+@pytest.fixture(scope='session')
 def jls_v1(tmp_path_factory):
     """A JLS v1 file with current, voltage and power.  See jls_files."""
     return jls_files.write_v1(tmp_path_factory.mktemp('jls') / 'v1.jls')

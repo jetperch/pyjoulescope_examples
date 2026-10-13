@@ -108,6 +108,42 @@ def write_v2(path, sample_rate=SAMPLE_RATE, duration=DURATION, names=None):
     return path
 
 
+def write_v2_multi(path, sample_rate=SAMPLE_RATE, duration=DURATION):
+    """Write a JLS v2 file like two Joulescopes recorded together.
+
+    Source 1 is the JS220 of write_v2().  Source 2 is a JS110 whose current
+    signal starts 10 ms later and ends 20 ms later, so the signals have
+    different time extents, as devices recorded together always do.
+
+    :param path: The output file path.
+    :param sample_rate: The sample rate in Hz.
+    :param duration: The source 1 duration in seconds.
+    :return: path.
+    """
+    from pyjls import Writer, SignalType, DataType
+    data = signals(sample_rate, duration)
+    late = sample_rate // 100            # 10 ms
+    n2 = len(data['current']) + 3 * late  # ends 20 ms after source 1
+    current2 = np.full(n2, CURRENT_HIGH, dtype=np.float32)
+    with Writer(str(path)) as wr:
+        wr.source_def(source_id=1, name=f'JS220-{SERIAL_NUMBER}', vendor='Jetperch',
+                      model='JS220', version='1.0.0', serial_number=SERIAL_NUMBER)
+        wr.source_def(source_id=2, name='JS110-000197', vendor='Jetperch',
+                      model='JS110', version='1.0.0', serial_number='000197')
+        for signal_id, source_id, name, values, t_start in [
+                (1, 1, 'current', data['current'], UTC_START),
+                (2, 1, 'voltage', data['voltage'], UTC_START),
+                (3, 2, 'current', current2, UTC_START + (late * TIME64_SECOND) // sample_rate)]:
+            wr.signal_def(signal_id=signal_id, source_id=source_id, signal_type=SignalType.FSR,
+                          data_type=DataType.F32, sample_rate=sample_rate,
+                          name=name, units='A' if name == 'current' else 'V')
+            wr.utc(signal_id, 0, t_start)
+            wr.fsr_f32(signal_id, 0, values)
+            sample_id = len(values) - 1
+            wr.utc(signal_id, sample_id, t_start + (sample_id * TIME64_SECOND) // sample_rate)
+    return path
+
+
 def write_v1(path, sample_rate=SAMPLE_RATE, duration=DURATION):
     """Write a JLS v1 file like a JS110 capture.
 

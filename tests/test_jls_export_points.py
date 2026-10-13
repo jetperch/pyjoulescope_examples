@@ -139,3 +139,17 @@ def test_unknown_column(path, jls_v2, tmp_path):
     assert r.returncode != 0, r
     assert 'nope' in r.stderr
     assert not (tmp_path / 'out.csv').exists()
+
+
+def test_different_extents(path, jls_v2_multi, tmp_path):
+    # two Joulescopes recorded together: export the window common to both
+    r = harness.run(path, jls_v2_multi, 'out.csv', '--columns', 'time,1.current,2.current',
+                    '--count', 10, cwd=tmp_path)
+    assert r.returncode == 0, r
+    header, data = _csv(tmp_path / 'out.csv')
+    assert header == '# time,JS220-000415.current,JS110-000197.current'
+    assert data.shape == (10, 3)
+    # the common window: 10 ms after the JS220 start to the JS220 end
+    np.testing.assert_allclose(data[:, 0], np.arange(10) * ((jls_files.DURATION - 0.01) / 10), rtol=1e-3)
+    np.testing.assert_allclose(data[:, 2], jls_files.CURRENT_HIGH, rtol=1e-6)
+    assert np.mean(data[:, 1]) == pytest.approx(jls_files.CURRENT_MEAN, rel=0.05)
