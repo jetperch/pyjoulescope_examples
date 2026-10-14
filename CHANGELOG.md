@@ -35,6 +35,10 @@ Changes:
   which left no way to tell which instrument or mechanism was at fault.
 * The test shim's `data_fault` accepts `mute@N`, which silences a signal
   from message N on, as when an instrument stops sending data.
+* pytest keeps the temporary output of failed tests only, from the last
+  two sessions.  The streaming examples write about 170 MB of JLS files
+  per run of tests/test_unplug.py alone, and the default of keeping every
+  test's output from the last three sessions filled the test bench's /tmp.
 
 
 ## 1.0.1
