@@ -13,9 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import harness
+import importlib.util
+import numpy as np
+import os
 import pytest
 import re
+from pyjoulescope_driver import time64
 
 
 pytestmark = pytest.mark.parametrize('path', harness.paths('read_by_pyjoulescope_driver'))
@@ -41,7 +46,7 @@ def test_help(path):
     r = harness.run(path, '--help')
     assert r.returncode == 0, r
     for option in ['--verbose', '-v', '--duration', '-d', '--frequency', '-f', '--device',
-                   '--open', '-o', '--signals', '--no-progress']:
+                   '--open', '-o', '--signals', '--no-progress', '--stall-timeout']:
         assert option in r.stdout
 
 
@@ -161,6 +166,114 @@ def test_data_error(path, device_path):
     assert not r.interrupted, r
     assert r.returncode == 1, r
     assert 'TypeError' in r.stderr, r
+
+
+def _stall_lines(r, device_path, signal):
+    return [x.strip() for x in r.lines if x.strip().startswith(f'{device_path}.{signal}:')]
+
+
+def test_stall_no_data(path, device_path):
+    # An instrument that acknowledges the stream but never sends data: fail
+    # with the state of each signal instead of waiting forever.
+    r = harness.run(path, '-d', 0.5, '--no-progress', '--stall-timeout', 1, visible=device_path,
+                    timeout=10, data_fault='mute@1')
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert r.lines[0] == 'read stalled: 0.000 of 0.5 s, no progress for 1.0 s', r
+    for signal in ['current', 'voltage']:
+        assert _stall_lines(r, device_path, signal) == [f'{device_path}.{signal}: no data'], r
+    assert not any('common window' in x for x in r.lines), r
+
+
+def test_stall_after_data(path, device_path):
+    # Data that stops after two messages: report the count, age and window.
+    r = harness.run(path, '-d', 2, '--no-progress', '--stall-timeout', 1, visible=device_path,
+                    timeout=10, data_fault='mute@3')
+    assert not r.interrupted, r
+    assert r.returncode == 1, r
+    assert r.lines[0].startswith('read stalled: 0.'), r
+    for signal in ['current', 'voltage']:
+        lines = _stall_lines(r, device_path, signal)
+        assert len(lines) == 1, r
+        # the signals start a few ms apart, so only the earliest is at +0.000
+        m = re.match(rf'^{re.escape(device_path)}\.{signal}: 2 messages, (\d+) samples, '
+                     r'last ([\d.]+) s ago, utc \+([\d.]+) to \+([\d.]+) s$', lines[0])
+        assert m, r
+        assert int(m.group(1)) > 0, r
+        assert 1.0 <= float(m.group(2)) < 5.0, r
+        assert float(m.group(3)) < float(m.group(4)) < 1.0, r
+    assert any(x.strip().startswith('common window: +0.0') for x in r.lines), r
+
+
+def _read_module():
+    """Import read.py in-process, for read() with a fake driver.
+
+    The bin/ wrapper runs the example on import, so always load the module
+    from examples/, and the module-level parametrization runs each
+    in-process test once per path.
+    """
+    spec = importlib.util.spec_from_file_location(
+        'read_example', os.path.join(harness.REPO_PATH, 'examples', 'pyjoulescope_driver', 'read.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class _FakeDriver:
+    """Delivers 5 messages of 100 samples at 1 kHz on each ctrl=1, with a
+    UTC offset per device, so the devices' windows can be made disjoint."""
+
+    def __init__(self, offsets):
+        self.offsets = offsets  # device_path -> UTC offset in seconds
+        self.fns = {}
+        self.t0 = time64.now()
+
+    def subscribe(self, topic, flags, fn, timeout=None):
+        self.fns[topic] = fn
+        return contextlib.nullcontext()
+
+    def unsubscribe(self, topic, fn, timeout=None):
+        self.fns.pop(topic, None)
+
+    def publish(self, topic, value, timeout=None):
+        if not topic.endswith('/ctrl') or value != 1:
+            return
+        device_path, _, ctrl = topic.partition('/s/')
+        data_topic = f'{device_path}/s/{ctrl[:-len("ctrl")]}!data'
+        offset = self.offsets[device_path]
+        for i in range(5):
+            self.fns[data_topic](data_topic, {
+                'sample_id': i * 100,
+                'utc': self.t0 + int((offset + i * 0.1) * time64.SECOND),
+                'decimate_factor': 1,
+                'sample_rate': 1000,
+                'data': np.zeros(100, dtype=np.float32),
+            })
+
+
+def test_read_in_process_two_devices(path):
+    read = _read_module().read
+    signals = [('u/js220/1', 'current'), ('u/js320/2', 'current')]
+    data = read(_FakeDriver({'u/js220/1': 0.0, 'u/js320/2': 0.1}), signals, duration=0.3,
+                stall_timeout=0.5)
+    assert sorted(data) == signals
+    assert len(data[signals[0]]['samples']) > 0
+
+
+def test_read_in_process_stalls_on_disjoint_utc(path):
+    # Both devices deliver data, but one device's UTC is 10 s ahead, so the
+    # common window never reaches the duration: the message shows why.
+    read = _read_module().read
+    signals = [('u/js220/1', 'current'), ('u/js320/2', 'current')]
+    with pytest.raises(RuntimeError) as ex:
+        read(_FakeDriver({'u/js220/1': 0.0, 'u/js320/2': 10.0}), signals, duration=0.3,
+             stall_timeout=0.3)
+    lines = [x.strip() for x in str(ex.value).split('\n')]
+    assert lines[0] == 'read stalled: -9.500 of 0.3 s, no progress for 0.3 s'
+    assert lines[1].startswith('u/js220/1.current: 5 messages, 500 samples, last 0.')
+    assert lines[1].endswith(' s ago, utc +0.000 to +0.500 s')
+    assert lines[2].endswith(' s ago, utc +10.000 to +10.500 s')
+    assert lines[3].startswith('common window: +10.000 to +0.500 s from 20')
 
 
 def test_several_devices(path, several_devices):

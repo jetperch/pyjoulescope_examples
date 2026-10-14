@@ -27,10 +27,60 @@ import argparse
 import logging
 from queue import Queue, Empty
 import sys
+import time
 import numpy as np
 
 
 SIGNAL_MAP = _signal_name_map()
+STALL_TIMEOUT = 3.0  # seconds without progress before read() raises
+
+
+def _time_info(read_state):
+    """The window common to every signal, from the UTC ranges seen so far.
+
+    :return: {'duration': seconds, 'utc_range': [start, end]}, both zero
+        until every signal has delivered data.
+    """
+    utc_entries = [value.get('utc_range') for value in read_state.values()]
+    if None in utc_entries:
+        utc_start, utc_end = 0, 0
+    else:
+        utc_start = max([x[0] for x in utc_entries])
+        utc_end = min([x[-1] for x in utc_entries])
+    return {
+        'duration': (utc_end - utc_start) / time64.SECOND,
+        'utc_range': [utc_start, utc_end]
+    }
+
+
+def _stall_message(read_state, duration, stall_timeout, now):
+    """Describe a read that stopped making progress, one line per signal.
+
+    A stall means either that a signal never delivered data, or that the
+    signals' UTC windows do not overlap and grow together, so the lines
+    show each signal's message count, time since its last data, and its
+    UTC window relative to the earliest signal start.
+    """
+    info = _time_info(read_state)
+    starts = [s['utc_range'][0] for s in read_state.values() if 'utc_range' in s]
+    t0 = min(starts) if starts else 0
+    lines = [f'read stalled: {info["duration"]:.3f} of {duration} s, '
+             f'no progress for {stall_timeout} s']
+    for s in read_state.values():
+        name = f'{s["device_path"]}.{s["signal"]}'
+        if 'utc_range' not in s:
+            lines.append(f'  {name}: no data')
+            continue
+        k0, k1 = s['sample_id_range']
+        u0, u1 = s['utc_range']
+        lines.append(f'  {name}: {s["data_count"]} messages, {k1 - k0} samples, '
+                     f'last {now - s["last_data"]:.1f} s ago, '
+                     f'utc {(u0 - t0) / time64.SECOND:+.3f} to {(u1 - t0) / time64.SECOND:+.3f} s')
+    if starts:
+        c0, c1 = info['utc_range']
+        lines.append(f'  common window: {(c0 - t0) / time64.SECOND:+.3f} to '
+                     f'{(c1 - t0) / time64.SECOND:+.3f} s from {time64.as_isostr(t0)}')
+    return '\n'.join(lines)
 
 
 def _on_progress(fract):
@@ -93,6 +143,11 @@ def get_parser():
                         + 'current, voltage, power, current_range, gpi[0], gpi[1], gpi[2], gpi[3], trigger_in. '
                         + 'You can also use the short form i, v, p, r, 0, 1, 2, 3, T. '
                         + 'Defaults to current,voltage.')
+    p.add_argument('--stall-timeout',
+                   type=float,
+                   default=STALL_TIMEOUT,
+                   help='The seconds without new data or progress before the read fails '
+                        f'and reports the state of each signal.  Defaults to {STALL_TIMEOUT}.')
     p.add_argument('--no-progress',
                    action='store_const',
                    default=_on_progress,
@@ -101,7 +156,7 @@ def get_parser():
     return p
 
 
-def read(jsdrv: Driver, signals, duration: float, on_progress=None):
+def read(jsdrv: Driver, signals, duration: float, on_progress=None, stall_timeout=None):
     """Read data from one or more Joulescopes.
 
     :param jsdrv: The pyjoulescope_driver.Driver instance.
@@ -111,6 +166,10 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
     :param duration: The capture duration in float seconds.
     :param on_progress: The optional callable(fract) to call with
         progress updates.
+    :param stall_timeout: The seconds without progress before this read
+        raises RuntimeError with the state of every signal.  None (default)
+        uses STALL_TIMEOUT.
+    :raise RuntimeError: If the read stalls, or a device is removed.
     :return: The mapping of (device_prefix, signal) to the data
         for each signal.  Each signal is also a map with keys:
         * device_path
@@ -140,6 +199,8 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
             'info': info,
             'data_topic': data_topic,
             'ctrl_topic': ctrl_topic,
+            'data_count': 0,
+            'last_data': None,  # time.monotonic() of the latest message
         }
         read_state[signal_full] = signal_state
 
@@ -154,6 +215,8 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
         def on_data(value):
             # ['sample_id', 'utc', 'field_id', 'index', 'sample_rate', 'decimate_factor', 'time_map', 'data']
             # print(list(value.keys()))
+            signal_state['data_count'] += 1
+            signal_state['last_data'] = time.monotonic()
             decimate_factor = value['decimate_factor']
             sample_id = value['sample_id'] // decimate_factor
             samples = value['data']
@@ -226,17 +289,10 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
         jsdrv.publish(ctrl_topic, 1)  # blocking, so it raises if the signal is unavailable
 
     def time_info():
-        utc_entries = [value.get('utc_range') for value in read_state.values()]
-        if None in utc_entries:
-            utc_start, utc_end = 0, 0
-        else:
-            utc_start = max([x[0] for x in utc_entries])
-            utc_end = min([x[-1] for x in utc_entries])
-        return {
-            'duration': (utc_end - utc_start) / time64.SECOND,
-            'utc_range': [utc_start, utc_end]
-        }
+        return _time_info(read_state)
 
+    if stall_timeout is None:
+        stall_timeout = STALL_TIMEOUT
     for signal in signals:
         signal_configure(signal)
     device_paths = {signal['device_path'] for signal in read_state.values()}
@@ -245,19 +301,28 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None):
         if value in device_paths:
             queue.put(RuntimeError(f'{value} removed during the read'))
 
+    duration_prev = 0.0
+    t_progress = time.monotonic()
     with jsdrv.subscribe('@/!remove', 'pub', on_remove):
         while True:
             try:
                 item = queue.get(timeout=0.1)
             except Empty:
-                continue
+                item = None
             if isinstance(item, Exception):
                 raise item
             duration_now = time_info()['duration']
             if duration_now >= duration:
                 on_progress(1.0)
                 break
-            on_progress(duration_now / duration)
+            now = time.monotonic()
+            if duration_now > duration_prev:
+                duration_prev, t_progress = duration_now, now
+            elif now - t_progress >= stall_timeout:
+                # Waiting forever hides which signal stopped, so name them.
+                raise RuntimeError(_stall_message(read_state, duration, stall_timeout, now))
+            if item is not None:
+                on_progress(duration_now / duration)
 
     u0, u1 = time_info()['utc_range']
     z1 = u0 + int(duration * time64.SECOND)
@@ -306,7 +371,8 @@ def run():
 
         verbose('Perform the sample read')
         try:
-            data = read(jsdrv, signals_full, duration=args.duration, on_progress=args.no_progress)
+            data = read(jsdrv, signals_full, duration=args.duration, on_progress=args.no_progress,
+                        stall_timeout=args.stall_timeout)
         except RuntimeError as ex:
             print(ex)
             return 1

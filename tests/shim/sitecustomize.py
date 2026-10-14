@@ -47,7 +47,8 @@ disappears while it opens.
 When JOULESCOPE_EXAMPLES_DATA_FAULT is set, such as "drop@3" or
 "corrupt@3", each subscriber to a "!data" topic loses that message,
 counting from 1, as when USB drops a packet, or receives it with
-"data" set to None, as a malformed message.
+"data" set to None, as a malformed message.  "mute@3" loses that message
+and every later one, as when an instrument stops sending data.
 
 When JOULESCOPE_EXAMPLES_DOCUMENTS is set, it also stands in for the
 user's Documents folder, so that examples that write there, such as
@@ -95,7 +96,7 @@ def _install(spec, hotplug=None, open_fail=None, data_fault=None):
     present = [not events or events[0][1] != 'add']
     unplugged = [False]
     wrappers = []  # every _Filtered instance, for the simulated hotplug events
-    faults = {}  # message number: 'drop' or 'corrupt'
+    faults = {}  # message number: 'drop', 'corrupt' or 'mute'
     for item in (data_fault or '').split(','):
         if item.strip():
             kind, n = item.strip().split('@')
@@ -149,11 +150,14 @@ def _install(spec, hotplug=None, open_fail=None, data_fault=None):
         def __init__(self, fn):
             self.fn = fn
             self.count = 0
+            self.muted = False
 
         def __call__(self, topic, value):
             self.count += 1
             kind = faults.get(self.count)
-            if kind == 'drop':
+            if kind == 'mute':
+                self.muted = True
+            if self.muted or kind == 'drop':
                 return
             if kind == 'corrupt':
                 value = dict(value, data=None)

@@ -20,6 +20,23 @@
 This file contains the list of changes made to pyjoulescope_examples.
 
 
+## 1.0.2
+
+2026 Oct 14
+
+Changes:
+
+* read.py fails instead of waiting forever when the read stalls.  After
+  `--stall-timeout` seconds (default 3) without new data or progress, it
+  prints `read stalled` and, for each signal, the message count, the time
+  since its last data and its UTC window relative to the earliest signal,
+  then the window common to all signals, and exits 1.  A three-instrument
+  read on the test bench once waited the full test timeout with no output,
+  which left no way to tell which instrument or mechanism was at fault.
+* The test shim's `data_fault` accepts `mute@N`, which silences a signal
+  from message N on, as when an instrument stops sending data.
+
+
 ## 1.0.1
 
 2026 Oct 13
