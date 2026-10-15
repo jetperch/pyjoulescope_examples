@@ -46,6 +46,11 @@ Changes:
   two sessions.  The streaming examples write about 170 MB of JLS files
   per run of tests/test_unplug.py alone, and the default of keeping every
   test's output from the last three sessions filled the test bench's /tmp.
+* legacy/trigger.py no longer reports a standard deviation of `nan`, with
+  a numpy RuntimeWarning, for a steady signal.  It summed the float32
+  samples and their squares in float32, which cannot resolve a variance
+  below about 1e-7 of the squared mean, such as a JS320 voltage of 0.988 V
+  with 0.18 mV of noise.  It now sums in float64.
 
 
 ## 1.0.1

@@ -83,7 +83,9 @@ def test_display(path, device_path, tmp_path):
     for row in rows:
         assert int(row[2]) - int(row[0]) == int(0.3 * fs)
         assert abs(int(row[8]) - int(0.3 * fs)) <= 2  # current_length
-    csv = (tmp_path / 'out.csv').read_text().splitlines()
+        for mean, std in [(row[4], row[5]), (row[9], row[10]), (row[14], row[15])]:
+            assert std != 'nan' or mean == 'nan', row  # 6.53
+    csv =(tmp_path / 'out.csv').read_text().splitlines()
     assert csv[0] == '#' + COLUMNS
     assert csv[1:] == [lines[3], lines[6]]
     assert 'DeprecationWarning' not in r.stderr, r

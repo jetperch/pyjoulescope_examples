@@ -199,6 +199,7 @@ class Signal:
         self._length = 0
         
     def add(self, v):
+        v = np.asarray(v, dtype=np.float64)  # float32 sums lose a small variance
         self._sx += int(np.sum(v) * GAIN)
         self._sx2 += int(np.sum(np.square(v)) * GAIN * GAIN)
         v_min = np.min(v)
@@ -219,7 +220,7 @@ class Signal:
             n = int(self._length)                             # int
             v_mean = self._sx / (GAIN * self._length)         # float div
             v_var_num = n * self._sx2 - self._sx * self._sx   # int mult & sub
-            v_var = v_var_num  / (n * (n - 1))                # float div
+            v_var = max(0, v_var_num) / (n * (n - 1))         # float div
             v_stddev = np.sqrt(v_var) / GAIN
         return [v_mean, v_stddev, self._min, self._max, self._length]
 
