@@ -455,6 +455,15 @@ instrument that stays enumerated with its statistics stopped, such as a
 firmware hang without a watchdog reset.  On Linux, Python measures the
 timeout with CLOCK_MONOTONIC, which does not advance in host sleep.
 
+Found by the Windows test plan, 2026 Oct 15:
+
+6.53. `legacy/trigger.py` reports a standard deviation of `nan`, with a
+numpy RuntimeWarning, for a steady signal: it sums float32 samples and
+their squares in float32, so the variance of a JS320 voltage of 0.988 V
+with 0.18 mV of noise came out negative.  `test_display` failed in 3 of
+4 runs on the JS320, and the suite failed under `PYTHONWARNINGS=error`.
+Fixed in 1.0.2: it sums in float64.
+
 Upstream defects that the examples expose.  Fix them upstream, not in the
 examples; the example tests mark them `xfail` with these numbers.
 
@@ -1109,3 +1118,36 @@ cycles each one:
   minute full-rate capture on all three at once with no lost samples.
 * doc/windows_test_plan.md repeats the platform-dependent parts on
   Windows, where the busy-open error code still needs the same fix.
+
+12.11. Windows test plan, 2026 Oct 15, against joulescope 1.7.2,
+pyjoulescope_driver 2.5.2 (joulescope_driver f9c28db, built in place),
+pyjls 0.19.0 and Python 3.14.3, with JS110 000197, JS220 000043 and
+JS320 31NB on a USB Insight Hub that switches each port's power:
+
+* Step 2: the suite passed before this run.  With `PYTHONWARNINGS=error`
+  it ran 1313 passed, 7 failed and 59 skipped, in 42 minutes.  Six
+  failures were 6.53 in `legacy/trigger.py` on the JS320, now fixed; the
+  trigger tests then passed 120 of 120 on the JS320.  The seventh, a
+  `read_by_pyjoulescope_driver.py` progress bar whose first update was
+  5%, passed 18 of 18 reruns, and the test now accepts any first value.
+  `pytest_asyncio` fails to import under `PYTHONWARNINGS=error` on Python
+  3.14, so the run used `-p no:asyncio`.
+* Step 3: as expected, a busy open failed with `1 UNSPECIFIED`.
+  `CreateFile` returns ERROR_ACCESS_DENIED for a held device.
+  joulescope_driver e814030 maps it to `21 IN_USE`.  Then 200 of 200 busy
+  opens on each instrument failed at once with IN_USE, with no handle
+  growth, and the open after release succeeded.
+* Step 4, with the hub: 24 of 24 after one fix.  The record, statistics
+  and measure entry points, record.py, read.py and statistics_logger.py
+  each printed the removal and exited 1 without a traceback, and each
+  JLS file was readable.  downsample_logging.py logged CLOSE then OPEN,
+  with no OPEN FAILED, for an unplug at 8 s and one at 1.5 s, before its
+  first row.  The `measure` entry point always failed on the JS110 with
+  PARAMETER_INVALID, unplug or not: it published `s/i/range/mode = auto`,
+  the range suppression mode on that model.  Fixed in joulescope_driver
+  f9c28db.
+* Step 5: downsample_logging.py with all three, 30 power cycles of one
+  instrument: RSS grew 0.87 MB (JS110), 0.71 MB (JS220) and 0.80 MB
+  (JS320), about half in the first cycle, with no OPEN FAILED.
+* Step 6: 40 of 40 hard kills and reopens on each instrument.  The
+  longest reopen took 1.73 s, on the JS320.
