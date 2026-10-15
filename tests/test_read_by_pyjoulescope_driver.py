@@ -239,6 +239,7 @@ class _FakeDriver:
     def __init__(self, offsets):
         self.offsets = offsets  # device_path -> UTC offset in seconds
         self.fns = {}
+        self.published = []  # (topic, value) for each ctrl publish
         self.t0 = time64.now()
 
     def subscribe(self, topic, flags, fn, timeout=None):
@@ -249,7 +250,10 @@ class _FakeDriver:
         self.fns.pop(topic, None)
 
     def publish(self, topic, value, timeout=None):
-        if not topic.endswith('/ctrl') or value != 1:
+        if not topic.endswith('/ctrl'):
+            return
+        self.published.append((topic, value))
+        if value != 1:
             return
         device_path, _, ctrl = topic.partition('/s/')
         data_topic = f'{device_path}/s/{ctrl[:-len("ctrl")]}!data'
@@ -278,9 +282,12 @@ def test_read_in_process_fails_on_disjoint_utc(path):
     # common window is far from the duration: fail at once and show why.
     read = _read_module().read
     signals = [('u/js220/1', 'current'), ('u/js320/2', 'current')]
+    driver = _FakeDriver({'u/js220/1': 0.0, 'u/js320/2': 10.0})
     with pytest.raises(RuntimeError) as ex:
-        read(_FakeDriver({'u/js220/1': 0.0, 'u/js320/2': 10.0}), signals, duration=0.3,
-             stall_timeout=0.3)
+        read(driver, signals, duration=0.3, stall_timeout=0.3)
+    # the error path leaves the instruments idle
+    assert [x for x in driver.published if x[1] == 0] == [('u/js220/1/s/i/ctrl', 0), ('u/js320/2/s/i/ctrl', 0)]
+    assert not any(k.endswith('!data') for k in driver.fns)
     lines = [x.strip() for x in str(ex.value).split('\n')]
     assert lines[0] == "read failed: -9.500 of 0.3 s, the signals' UTC windows do not overlap"
     assert lines[1].startswith('u/js220/1.current: 5 messages, 500 samples, last 0.')

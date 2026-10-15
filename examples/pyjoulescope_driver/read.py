@@ -288,7 +288,15 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None, stall_timeou
             signal_state['utc_range'] = [z0, z1]
             signal_state['samples'] = samples[s0:s1]
 
+        def stop():
+            # Leave the instrument idle on an error: a JS220 closed while
+            # streaming resets itself a few seconds later.  Wait for the
+            # instrument to confirm, or the close can still arrive first.
+            jsdrv.unsubscribe(data_topic, data_fn, timeout=0)
+            jsdrv.publish(ctrl_topic, 0)
+
         signal_state['close'] = close
+        signal_state['stop'] = stop
         jsdrv.subscribe(data_topic, ['pub'], data_fn)
         jsdrv.publish(ctrl_topic, 1)  # blocking, so it raises if the signal is unavailable
 
@@ -297,8 +305,29 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None, stall_timeou
 
     if stall_timeout is None:
         stall_timeout = STALL_TIMEOUT
-    for signal in signals:
-        signal_configure(signal)
+    try:
+        for signal in signals:
+            signal_configure(signal)
+        _wait(jsdrv, read_state, queue, duration, on_progress, stall_timeout, time_info)
+    except BaseException:
+        for signal_state in read_state.values():
+            try:
+                signal_state['stop']()
+            except Exception:
+                pass  # the device may be gone
+        raise
+
+    u0, u1 = time_info()['utc_range']
+    z1 = u0 + int(duration * time64.SECOND)
+    utc_range = [u0, min(u1, z1)]
+    for signal in read_state.values():
+        signal['close'](utc_range)
+
+    return read_state
+
+
+def _wait(jsdrv, read_state, queue, duration, on_progress, stall_timeout, time_info):
+    """Wait until the window common to every signal reaches the duration."""
     device_paths = {signal['device_path'] for signal in read_state.values()}
 
     def on_remove(topic, value):  # an unplugged device never sends the remaining data
@@ -338,14 +367,6 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None, stall_timeou
             # windows start far apart, never stalls: show why on Ctrl-C.
             print(_state_message(read_state, duration, time.monotonic(), 'interrupted'))
             raise
-
-    u0, u1 = time_info()['utc_range']
-    z1 = u0 + int(duration * time64.SECOND)
-    utc_range = [u0, min(u1, z1)]
-    for signal in read_state.values():
-        signal['close'](utc_range)
-
-    return read_state
 
 
 def run():

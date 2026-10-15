@@ -37,6 +37,9 @@ Changes:
   once waited the full test timeout with no output, which left no way to
   tell which instrument or mechanism was at fault; the cause was a JS320
   sensor clock 268 s behind, see the joulescope_driver and firmware notes.
+  On every error exit, read.py now stops the streams it started before it
+  closes the instruments: a JS220 closed while streaming resets itself
+  about 2 s later and re-enumerates on USB.
 * The test shim's `data_fault` accepts `mute@N`, which silences a signal
   from message N on, as when an instrument stops sending data.
 * pytest keeps the temporary output of failed tests only, from the last
