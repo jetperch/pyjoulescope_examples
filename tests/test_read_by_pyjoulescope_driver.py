@@ -172,6 +172,19 @@ def _stall_lines(r, device_path, signal):
     return [x.strip() for x in r.lines if x.strip().startswith(f'{device_path}.{signal}:')]
 
 
+def test_interrupt_reports_state(path, device_path):
+    # Ctrl-C during a read that is still progressing shows each signal's state.
+    r = harness.run(path, '-d', 30, '--no-progress', visible=device_path, interrupt_after=3,
+                    timeout=10)
+    assert r.interrupted and not r.killed, r
+    assert r.returncode != 0, r
+    assert r.lines[0].startswith('read interrupted: '), r
+    for signal in ['current', 'voltage']:
+        lines = _stall_lines(r, device_path, signal)
+        assert len(lines) == 1 and ' messages, ' in lines[0], r
+    assert any(x.strip().startswith('common window: +0.0') for x in r.lines), r
+
+
 def test_stall_no_data(path, device_path):
     # An instrument that acknowledges the stream but never sends data: fail
     # with the state of each signal instead of waiting forever.
@@ -260,16 +273,16 @@ def test_read_in_process_two_devices(path):
     assert len(data[signals[0]]['samples']) > 0
 
 
-def test_read_in_process_stalls_on_disjoint_utc(path):
+def test_read_in_process_fails_on_disjoint_utc(path):
     # Both devices deliver data, but one device's UTC is 10 s ahead, so the
-    # common window never reaches the duration: the message shows why.
+    # common window is far from the duration: fail at once and show why.
     read = _read_module().read
     signals = [('u/js220/1', 'current'), ('u/js320/2', 'current')]
     with pytest.raises(RuntimeError) as ex:
         read(_FakeDriver({'u/js220/1': 0.0, 'u/js320/2': 10.0}), signals, duration=0.3,
              stall_timeout=0.3)
     lines = [x.strip() for x in str(ex.value).split('\n')]
-    assert lines[0] == 'read stalled: -9.500 of 0.3 s, no progress for 0.3 s'
+    assert lines[0] == "read failed: -9.500 of 0.3 s, the signals' UTC windows do not overlap"
     assert lines[1].startswith('u/js220/1.current: 5 messages, 500 samples, last 0.')
     assert lines[1].endswith(' s ago, utc +0.000 to +0.500 s')
     assert lines[2].endswith(' s ago, utc +10.000 to +10.500 s')

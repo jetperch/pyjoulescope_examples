@@ -53,19 +53,18 @@ def _time_info(read_state):
     }
 
 
-def _stall_message(read_state, duration, stall_timeout, now):
-    """Describe a read that stopped making progress, one line per signal.
+def _state_message(read_state, duration, now, reason, detail=''):
+    """Describe an incomplete read, one line per signal.
 
-    A stall means either that a signal never delivered data, or that the
-    signals' UTC windows do not overlap and grow together, so the lines
-    show each signal's message count, time since its last data, and its
-    UTC window relative to the earliest signal start.
+    The lines show each signal's message count, time since its last data,
+    and its UTC window relative to the earliest signal start, which tells
+    a signal that never delivered data from signals whose UTC windows do
+    not overlap and grow together.
     """
     info = _time_info(read_state)
     starts = [s['utc_range'][0] for s in read_state.values() if 'utc_range' in s]
     t0 = min(starts) if starts else 0
-    lines = [f'read stalled: {info["duration"]:.3f} of {duration} s, '
-             f'no progress for {stall_timeout} s']
+    lines = [f'read {reason}: {info["duration"]:.3f} of {duration} s{detail}']
     for s in read_state.values():
         name = f'{s["device_path"]}.{s["signal"]}'
         if 'utc_range' not in s:
@@ -81,6 +80,10 @@ def _stall_message(read_state, duration, stall_timeout, now):
         lines.append(f'  common window: {(c0 - t0) / time64.SECOND:+.3f} to '
                      f'{(c1 - t0) / time64.SECOND:+.3f} s from {time64.as_isostr(t0)}')
     return '\n'.join(lines)
+
+
+def _stall_message(read_state, duration, stall_timeout, now):
+    return _state_message(read_state, duration, now, 'stalled', f', no progress for {stall_timeout} s')
 
 
 def _on_progress(fract):
@@ -169,7 +172,8 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None, stall_timeou
     :param stall_timeout: The seconds without progress before this read
         raises RuntimeError with the state of every signal.  None (default)
         uses STALL_TIMEOUT.
-    :raise RuntimeError: If the read stalls, or a device is removed.
+    :raise RuntimeError: If the read stalls, the signals' UTC windows do
+        not overlap, or a device is removed.
     :return: The mapping of (device_prefix, signal) to the data
         for each signal.  Each signal is also a map with keys:
         * device_path
@@ -301,28 +305,39 @@ def read(jsdrv: Driver, signals, duration: float, on_progress=None, stall_timeou
         if value in device_paths:
             queue.put(RuntimeError(f'{value} removed during the read'))
 
-    duration_prev = 0.0
+    duration_prev = None
     t_progress = time.monotonic()
     with jsdrv.subscribe('@/!remove', 'pub', on_remove):
-        while True:
-            try:
-                item = queue.get(timeout=0.1)
-            except Empty:
-                item = None
-            if isinstance(item, Exception):
-                raise item
-            duration_now = time_info()['duration']
-            if duration_now >= duration:
-                on_progress(1.0)
-                break
-            now = time.monotonic()
-            if duration_now > duration_prev:
-                duration_prev, t_progress = duration_now, now
-            elif now - t_progress >= stall_timeout:
-                # Waiting forever hides which signal stopped, so name them.
-                raise RuntimeError(_stall_message(read_state, duration, stall_timeout, now))
-            if item is not None:
-                on_progress(duration_now / duration)
+        try:
+            while True:
+                try:
+                    item = queue.get(timeout=0.1)
+                except Empty:
+                    item = None
+                if isinstance(item, Exception):
+                    raise item
+                duration_now = time_info()['duration']
+                if duration_now >= duration:
+                    on_progress(1.0)
+                    break
+                now = time.monotonic()
+                if duration_now < -stall_timeout:
+                    # Every signal has data, but their UTC windows are far apart: an
+                    # instrument's clock is wrong, and the read would wait that long.
+                    raise RuntimeError(_state_message(read_state, duration, now, 'failed',
+                                                      ", the signals' UTC windows do not overlap"))
+                if duration_prev is None or duration_now > duration_prev:
+                    duration_prev, t_progress = duration_now, now
+                elif now - t_progress >= stall_timeout:
+                    # Waiting forever hides which signal stopped, so name them.
+                    raise RuntimeError(_stall_message(read_state, duration, stall_timeout, now))
+                if item is not None:
+                    on_progress(duration_now / duration)
+        except KeyboardInterrupt:
+            # A read that progresses too slowly, as when the signals' UTC
+            # windows start far apart, never stalls: show why on Ctrl-C.
+            print(_state_message(read_state, duration, time.monotonic(), 'interrupted'))
+            raise
 
     u0, u1 = time_info()['utc_range']
     z1 = u0 + int(duration * time64.SECOND)
