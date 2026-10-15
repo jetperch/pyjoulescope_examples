@@ -1,5 +1,5 @@
 <!--
-# Copyright 2019-2025 Jetperch LLC
+# Copyright 2019-2026 Jetperch LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ This file contains the list of changes made to pyjoulescope_examples.
 
 ## 1.0.2
 
-2026 Oct 14
+2026 Oct 15
 
 Changes:
 
