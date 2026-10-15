@@ -71,7 +71,8 @@ def test_no_device(path):
 def test_default(path, device_path):
     r = harness.run(path, visible=device_path, timeout=10)
     assert r.returncode == 0, r
-    assert r.lines[0].startswith('[-----')
+    # the first update can arrive after the first 5%, as on a JS320
+    assert re.match(r'^\[[=-]{25}\] +\d+%', r.lines[0]), r
     assert '100%' in r.lines[-3]
     data = _parse(r.lines[-2:])
     assert sorted(data) == [(device_path, 'current'), (device_path, 'voltage')]
