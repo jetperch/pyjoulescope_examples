@@ -22,10 +22,12 @@ This file contains the list of changes made to pyjoulescope_examples.
 
 ## 1.0.2
 
-2026 Oct 15
+2026 Oct 16
 
 Changes:
 
+* Requires joulescope 1.7.3, pyjoulescope_driver 2.5.4 and pyjls 0.19.1
+  or newer.
 * read.py fails instead of waiting forever when the read stalls.  After
   `--stall-timeout` seconds (default 3) without new data or progress, it
   prints `read stalled` and, for each signal, the message count, the time
