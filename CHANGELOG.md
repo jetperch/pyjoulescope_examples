@@ -51,6 +51,8 @@ Changes:
   samples and their squares in float32, which cannot resolve a variance
   below about 1e-7 of the squared mean, such as a JS320 voltage of 0.988 V
   with 0.18 mV of noise.  It now sums in float64.
+* Moved the completed doc/refactor_v1.md and doc/windows_test_plan.md to
+  doc/plans/completed/.
 
 
 ## 1.0.1

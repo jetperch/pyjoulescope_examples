@@ -20,9 +20,9 @@
 Instructions for an agent, such as Claude Code, on the Windows bench with a
 JS110, JS220 and JS320 attached.  A stress run on Linux, with a USB hub that
 power cycled each instrument, found and fixed the defects in
-`doc/refactor_v1.md` 6.40 to 6.52 and U.10 to U.12.  These steps repeat the
-parts that depend on the platform, and close the one known Windows gap
-(step 3).
+`doc/plans/completed/refactor_v1.md` 6.40 to 6.52 and U.10 to U.12.
+These steps repeat the parts that depend on the platform, and close the
+one known Windows gap (step 3).
 
 Report results as counts from logs and exit codes, never from memory.
 Write each script below to a scratch directory, not to a repository.
@@ -206,4 +206,4 @@ Expected: 40 of 40 for each instrument.  Record any open that takes over
 
 Summarize each step with its counts, the failures with their exact
 output, and the commits made.  Add a dated status line to
-`doc/refactor_v1.md` section 12 in pyjoulescope_examples.
+`doc/plans/completed/refactor_v1.md` section 12 in pyjoulescope_examples.

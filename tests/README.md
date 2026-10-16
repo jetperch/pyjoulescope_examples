@@ -79,6 +79,7 @@ which must stay on.
   runs through every path in `harness.EXAMPLES` for that example.
 * A known defect is a test of the correct behavior, marked
   `pytest.mark.xfail(strict=True, reason='6.N ...')` with its item number
-  in doc/refactor_v1.md.  The commit that fixes it removes the mark.
+  in doc/plans/completed/refactor_v1.md.  The commit that fixes it
+  removes the mark.
 * Model differences are part of the expected behavior.  A device test that
   only applies to some models checks the model and states why.

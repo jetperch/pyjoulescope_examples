@@ -1116,8 +1116,9 @@ cycles each one:
   powered, with no program using it.  Only a power cycle recovers it.
 * 300 of 300 reopens after hard kills of a streaming program, and a 30
   minute full-rate capture on all three at once with no lost samples.
-* doc/windows_test_plan.md repeats the platform-dependent parts on
-  Windows, where the busy-open error code still needs the same fix.
+* doc/plans/completed/windows_test_plan.md repeats the
+  platform-dependent parts on Windows, where the busy-open error code
+  still needs the same fix.
 
 12.11. Windows test plan, 2026 Oct 15, against joulescope 1.7.2,
 pyjoulescope_driver 2.5.2 (joulescope_driver f9c28db, built in place),
@@ -1151,3 +1152,24 @@ JS320 31NB on a USB Insight Hub that switches each port's power:
   (JS320), about half in the first cycle, with no OPEN FAILED.
 * Step 6: 40 of 40 hard kills and reopens on each instrument.  The
   longest reopen took 1.73 s, on the JS320.
+
+12.12. Retest of the Windows test plan, 2026 Oct 16, against the released
+joulescope 1.7.3, pyjoulescope_driver 2.5.4 and pyjls 0.19.1, installed
+from PyPI with nothing on `PYTHONPATH`, on Python 3.14.8 with the same
+bench.  The driver's C code is unchanged from f9c28db.
+
+* Step 2: 1320 passed and 59 skipped, with no failures, both plain and
+  with `PYTHONWARNINGS=error`, in 42 minutes each.  `pytest_asyncio` was
+  not installed, so `-p no:asyncio` was not needed.
+* Step 3: 200 of 200 busy opens on each instrument failed at once with
+  `21 IN_USE`, with no handle growth, and the open after release
+  succeeded.
+* Step 4: 24 of 24, including the `measure` entry point on the JS110.
+* Step 5: RSS grew 0.74 MB (JS110), 0.67 MB (JS220) and 0.88 MB (JS320)
+  over 30 power cycles each, with no OPEN FAILED.  One JS110 cycle did
+  not power the port off although the hub reported it off: the logger
+  kept writing rows through it, so the JS110 had 29 real cycles.
+* Step 6: 40 of 40 on each instrument.  The longest reopen took 1.69 s,
+  on the JS320.
+* The plan is complete.  U.3, U.6 and U.7 remain open upstream, and
+  none blocks the section 11 criteria.
